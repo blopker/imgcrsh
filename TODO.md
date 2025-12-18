@@ -9,9 +9,9 @@ Tracking implementation of the [Technical Specification](SPEC.md) for the High-F
 - [x] `kamadak-exif` - EXIF parsing
 - [x] `moxcms` - Color management (SIMD-accelerated)
 - [x] `fast_image_resize` - Lanczos3 resampling
-- [ ] `quantette` - Oklab quantization for lossy PNG/WebP
+- [x] `imagequant` - RGBA quantization for lossy PNG (pngquant library)
 - [x] `mozjpeg` - JPEG encoding
-- [x] `oxipng` - PNG optimization (dependency added, not integrated)
+- [x] `oxipng` - PNG optimization
 - [x] `webp` - WebP encoding (dependency added, not integrated)
 - [ ] `ravif` - AVIF encoding
 - [ ] `zune-jpegxl` / `libjxl` - JPEG XL encoding
@@ -32,18 +32,20 @@ Tracking implementation of the [Technical Specification](SPEC.md) for the High-F
 ## Phase A: Ingestion & Normalization
 
 ### A.0: Physical Normalization (EXIF Orientation)
-- [ ] Parse EXIF Orientation tag
-- [ ] Apply rotation/flip transforms when `strip_metadata: true`
-- [ ] Pass through orientation when `strip_metadata: false`
-- [ ] Calculate aspect ratios based on intended orientation
+- [x] Parse EXIF Orientation tag (values 1-8)
+- [x] Apply rotation/flip transforms (always baked since EXIF won't survive re-encoding)
+- [x] Pixel-level transforms for all 8 orientation values
+- [x] Dimension swapping for 90°/270° rotations
 
 ### A.1: Color Management
 - [x] ICC profile extraction from JPEG APP2 markers
 - [x] Color space detection from ICC profile description
 - [x] EXIF ColorSpace tag fallback (value 2 = Adobe RGB)
-- [x] Transform to Display P3 when `color_normalization: true`
-- [x] Transform to sRGB when `color_normalization: false`
+- [x] `preserve_icc` option to keep original ICC profile
+- [x] Normalize to Display P3 when source has profile and `preserve_icc: false`
+- [x] Keep sRGB for untagged images
 - [x] `ColorTransformer` struct with moxcms integration
+- [x] Preserve original P3 profile when no transform needed (avoids tone curve changes)
 - [ ] Perceptual intent for gamut clipping
 - [ ] Floyd-Steinberg dithering for f32→u8 conversion
 
@@ -64,9 +66,10 @@ Tracking implementation of the [Technical Specification](SPEC.md) for the High-F
 ## Phase C: Color Mapping & Quantization
 
 - [x] Gamut mapping via moxcms
+- [x] RGBA quantization via imagequant (for lossy PNG)
+- [x] Dithering for smooth gradients (imagequant built-in)
 - [ ] Perceptual intent rendering
-- [ ] Floyd-Steinberg dithering
-- [ ] Oklab quantization (via `quantette`)
+- [ ] Floyd-Steinberg dithering for f32→u8 conversion
 
 ---
 
@@ -78,16 +81,19 @@ Tracking implementation of the [Technical Specification](SPEC.md) for the High-F
 - [x] Progressive scan encoding
 - [x] Chroma subsampling (4:4:4, 4:2:2, 4:2:0)
 - [x] Lossless mode (100% quality, forced 4:4:4)
-- [x] ICC profile injection (`write_icc_profile`)
+- [x] ICC profile injection (custom implementation with correct 1-indexed chunks)
+  - Note: mozjpeg-rust has a bug with 0-indexed chunk numbers
 - [ ] Trellis quantization optimization
 
 ### PNG
 - [x] oxipng integration
 - [x] Lossless optimization levels (0-6)
 - [x] ICC profile injection
-- [ ] Lossy mode via Oklab quantization
-- [ ] 256-color palette generation
-- [ ] Dithered remap
+- [x] Lossy mode via imagequant (pngquant library)
+- [x] 256-color palette generation with full RGBA support
+- [x] Dithered remap for smooth gradients
+- [x] Quality setting (0-100) for lossy mode
+- Note: Quantized formats stay in sRGB (imagequant is sRGB-optimized)
 
 ### WebP
 - [ ] libwebp integration
@@ -125,8 +131,8 @@ Tracking implementation of the [Technical Specification](SPEC.md) for the High-F
 ## Configuration Options
 
 ### Implemented
-- [x] `strip_metadata: bool` (default: true) - *partial, no orientation yet*
-- [x] `color_normalization: bool` (default: true)
+- [x] `strip_metadata: bool` (default: true)
+- [x] `preserve_icc: bool` (default: false) - keep original ICC profile
 - [x] `width: Option<u32>` / `height: Option<u32>`
 - [x] `filter_type: enum` (Nearest, Bilinear, Bicubic, Lanczos3)
 - [x] `linear_resampling: bool` (default: true)
@@ -134,11 +140,11 @@ Tracking implementation of the [Technical Specification](SPEC.md) for the High-F
 - [x] `jpeg.quality: u8` (default: 75)
 - [x] `jpeg.progressive: bool` (default: true)
 - [x] `jpeg.chroma_subsampling: enum` (default: 4:2:0)
-- [ ] ~~`dssim_threshold`~~ - Removed (DSSIM is dev-only for regression tests)
+- [x] `png.optimization_level: u8` (0-6)
+- [x] `png.lossless: bool` (default: true)
+- [x] `png.quality: u8` (default: 90) - for lossy mode
 
 ### Not Yet Implemented
-- [x] `png.optimization_level: u8` (0-6)
-- [ ] `png.lossy_quantize: bool`
 - [ ] `webp.lossless: bool`
 - [ ] `webp.quantized_lossy: bool`
 - [ ] `webp.sns_strength: u8`
@@ -190,23 +196,26 @@ src/
 ├── lib.rs              # Public API exports
 ├── config.rs           # Pipeline configuration structs
 ├── color.rs            # Color space detection & transforms
+├── orientation.rs      # EXIF orientation parsing & transforms
 ├── pipeline.rs         # Core processing pipeline
 ├── main.rs             # CLI interface
 └── formats/
     ├── mod.rs          # Encoder trait & re-exports
-    ├── jpeg.rs         # JPEG encoding (mozjpeg)
-    └── png.rs          # PNG encoding (oxipng)
+    ├── jpeg.rs         # JPEG encoding (mozjpeg + ICC injection fix)
+    └── png.rs          # PNG encoding (oxipng + imagequant)
 
 tests/
 └── jpeg_pipeline.rs    # Integration tests
+
+scratch/                # Development utilities (not part of library)
 ```
 
 ---
 
 ## Next Steps (Suggested Priority)
 
-1. **EXIF Orientation** - Complete Phase A.0 normalization
-2. **WebP Encoding** - Integrate libwebp for web-optimized output
-3. **Chroma Alignment** - Ensure even dimensions for subsampled formats
-4. **AVIF Encoding** - Modern format with CICP color management
-5. **DSSIM Tests** - Add perceptual regression tests (dev-only)
+1. **WebP Encoding** - Integrate libwebp for web-optimized output
+2. **Chroma Alignment** - Ensure even dimensions for subsampled formats
+3. **AVIF Encoding** - Modern format with CICP color management
+4. **DSSIM Tests** - Add perceptual regression tests (dev-only)
+5. **CLI Enhancements** - Add more options to main.rs

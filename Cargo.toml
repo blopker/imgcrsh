@@ -2,6 +2,7 @@
 name = "imgcrsh"
 version = "0.1.0"
 edition = "2024"
+default-run = "imgcrsh"
 
 [dependencies]
 # The Core: High-performance color management (SIMD accelerated)
