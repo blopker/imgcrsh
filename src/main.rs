@@ -8,12 +8,13 @@ fn main() -> Result<()> {
     let args: Vec<String> = env::args().collect();
 
     if args.len() < 3 {
-        eprintln!("Usage: {} <input> <output> [quality] [--preserve-icc]", args[0]);
+        eprintln!("Usage: {} <input> <output> [quality] [options]", args[0]);
         eprintln!();
         eprintln!("Output format is determined by file extension (.jpg, .png, .webp)");
         eprintln!("Quality: 1-100 for JPEG/WebP (default: 75/80), 0-6 for PNG optimization (default: 2)");
         eprintln!();
         eprintln!("Options:");
+        eprintln!("  --lossless      Lossless encoding (PNG, WebP)");
         eprintln!("  --preserve-icc  Keep original ICC profile (no color normalization)");
         std::process::exit(1);
     }
@@ -24,6 +25,7 @@ fn main() -> Result<()> {
 
     // Check for flags
     let preserve_icc = args.iter().any(|a| a == "--preserve-icc");
+    let lossless = args.iter().any(|a| a == "--lossless");
 
     // Parse quality (skip flags)
     let quality: u8 = args
@@ -61,20 +63,23 @@ fn main() -> Result<()> {
         OutputFormat::Jpeg => PipelineConfig::new()
             .with_format(OutputFormat::Jpeg)
             .with_quality(quality)
-            .with_lossless(false)
+            .with_lossless(lossless)
             .with_preserve_icc(preserve_icc),
         OutputFormat::Png => PipelineConfig::new()
             .with_format(OutputFormat::Png)
             .with_png_optimization(quality.min(6))
-            .with_lossless(false)
+            .with_lossless(lossless)
             .with_preserve_icc(preserve_icc),
         OutputFormat::WebP => PipelineConfig::new()
             .with_format(OutputFormat::WebP)
             .with_quality(quality)
-            .with_lossless(false)
+            .with_lossless(lossless)
             .with_preserve_icc(preserve_icc),
     };
 
+    if lossless {
+        println!("Using lossless encoding");
+    }
     if preserve_icc {
         println!("Preserving original ICC profile");
     }
