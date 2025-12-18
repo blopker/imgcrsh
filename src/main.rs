@@ -1,13 +1,17 @@
 use anyhow::Result;
-use imgcrsh::{PipelineConfig, process};
+use imgcrsh::{OutputFormat, PipelineConfig, process};
 use std::env;
 use std::fs;
+use std::path::Path;
 
 fn main() -> Result<()> {
     let args: Vec<String> = env::args().collect();
 
     if args.len() < 3 {
-        eprintln!("Usage: {} <input.jpg> <output.jpg> [quality]", args[0]);
+        eprintln!("Usage: {} <input> <output> [quality]", args[0]);
+        eprintln!();
+        eprintln!("Output format is determined by file extension (.jpg, .png)");
+        eprintln!("Quality: 1-100 for JPEG (default: 75), 0-6 for PNG optimization (default: 2)");
         std::process::exit(1);
     }
 
@@ -19,12 +23,33 @@ fn main() -> Result<()> {
     let input = fs::read(input_path)?;
     let input_size = input.len();
 
+    // Detect output format from extension
+    let output_format = match Path::new(output_path)
+        .extension()
+        .and_then(|e| e.to_str())
+        .map(|e| e.to_lowercase())
+        .as_deref()
+    {
+        Some("png") => OutputFormat::Png,
+        Some("jpg") | Some("jpeg") => OutputFormat::Jpeg,
+        _ => {
+            eprintln!("Unknown output format. Use .jpg or .png extension.");
+            std::process::exit(1);
+        }
+    };
+
     println!("Processing: {}", input_path);
     println!("Input size: {} bytes", input_size);
 
     // Configure pipeline
-    let config = PipelineConfig::new()
-        .with_quality(quality);
+    let config = match output_format {
+        OutputFormat::Jpeg => PipelineConfig::new()
+            .with_format(OutputFormat::Jpeg)
+            .with_quality(quality),
+        OutputFormat::Png => PipelineConfig::new()
+            .with_format(OutputFormat::Png)
+            .with_png_optimization(quality.min(6)),
+    };
 
     // Process image
     let output = process(&input, &config)?;

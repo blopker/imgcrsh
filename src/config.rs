@@ -1,5 +1,7 @@
 //! Pipeline configuration types
 
+use crate::formats::{jpeg::JpegConfig, png::PngConfig};
+
 /// Resampling filter types for spatial transformation
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum FilterType {
@@ -10,53 +12,13 @@ pub enum FilterType {
     Lanczos3,
 }
 
-/// Chroma subsampling modes for JPEG/AVIF encoding
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub enum ChromaSubsampling {
-    /// Full chroma resolution (no subsampling)
-    Yuv444,
-    /// Horizontal subsampling only
-    Yuv422,
-    /// Both horizontal and vertical subsampling (default)
-    #[default]
-    Yuv420,
-}
-
 /// Output format specification
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum OutputFormat {
+    #[default]
     Jpeg,
-    // Future: Png, WebP, Avif, JpegXl, Tiff, Gif
-}
-
-impl Default for OutputFormat {
-    fn default() -> Self {
-        Self::Jpeg
-    }
-}
-
-/// JPEG-specific encoding options
-#[derive(Debug, Clone)]
-pub struct JpegOptions {
-    /// Enable lossless mode (100% quality, disables DCT quantization)
-    pub lossless: bool,
-    /// Quality level 1-100 (ignored if lossless)
-    pub quality: u8,
-    /// Enable progressive scan encoding
-    pub progressive: bool,
-    /// Chroma subsampling (forced to 4:4:4 if lossless)
-    pub chroma_subsampling: ChromaSubsampling,
-}
-
-impl Default for JpegOptions {
-    fn default() -> Self {
-        Self {
-            lossless: false,
-            quality: 75,
-            progressive: true,
-            chroma_subsampling: ChromaSubsampling::Yuv420,
-        }
-    }
+    Png,
+    // Future: WebP, Avif, JpegXl, Tiff, Gif
 }
 
 /// Main pipeline configuration
@@ -82,7 +44,9 @@ pub struct PipelineConfig {
     /// Output format
     pub output_format: OutputFormat,
     /// JPEG-specific options
-    pub jpeg: JpegOptions,
+    pub jpeg: JpegConfig,
+    /// PNG-specific options
+    pub png: PngConfig,
 }
 
 impl Default for PipelineConfig {
@@ -95,7 +59,8 @@ impl Default for PipelineConfig {
             filter_type: FilterType::Lanczos3,
             linear_resampling: true,
             output_format: OutputFormat::Jpeg,
-            jpeg: JpegOptions::default(),
+            jpeg: JpegConfig::default(),
+            png: PngConfig::default(),
         }
     }
 }
@@ -104,6 +69,12 @@ impl PipelineConfig {
     /// Create a new configuration with default settings
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Set output format
+    pub fn with_format(mut self, format: OutputFormat) -> Self {
+        self.output_format = format;
+        self
     }
 
     /// Set target dimensions (None for either preserves aspect ratio)
@@ -137,8 +108,11 @@ impl PipelineConfig {
         self
     }
 
-    /// Set chroma subsampling mode
-    pub fn with_chroma_subsampling(mut self, subsampling: ChromaSubsampling) -> Self {
+    /// Set chroma subsampling mode (JPEG)
+    pub fn with_chroma_subsampling(
+        mut self,
+        subsampling: crate::formats::jpeg::ChromaSubsampling,
+    ) -> Self {
         self.jpeg.chroma_subsampling = subsampling;
         self
     }
@@ -146,6 +120,12 @@ impl PipelineConfig {
     /// Enable/disable progressive JPEG encoding
     pub fn with_progressive(mut self, progressive: bool) -> Self {
         self.jpeg.progressive = progressive;
+        self
+    }
+
+    /// Set PNG optimization level (0-6)
+    pub fn with_png_optimization(mut self, level: u8) -> Self {
+        self.png.optimization_level = level.min(6);
         self
     }
 }

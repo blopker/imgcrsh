@@ -9,7 +9,8 @@
       "WebFetch(domain:docs.rs)",
       "Bash(cargo doc:*)",
       "Bash(grep:*)",
-      "Bash(identify -verbose:*)"
+      "Bash(identify -verbose:*)",
+      "Bash(identify:*)"
     ]
   }
 }

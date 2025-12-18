@@ -5,8 +5,10 @@
 
 mod color;
 mod config;
+pub mod formats;
 mod pipeline;
 
 pub use color::{ColorSpaceInfo, ColorTransformer, SourceColorSpace};
 pub use config::*;
+pub use formats::Encoder;
 pub use pipeline::process;

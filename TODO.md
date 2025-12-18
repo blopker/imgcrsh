@@ -82,8 +82,9 @@ Tracking implementation of the [Technical Specification](SPEC.md) for the High-F
 - [ ] Trellis quantization optimization
 
 ### PNG
-- [ ] oxipng integration
-- [ ] Lossless optimization levels (0-6)
+- [x] oxipng integration
+- [x] Lossless optimization levels (0-6)
+- [x] ICC profile injection
 - [ ] Lossy mode via Oklab quantization
 - [ ] 256-color palette generation
 - [ ] Dithered remap
@@ -136,7 +137,7 @@ Tracking implementation of the [Technical Specification](SPEC.md) for the High-F
 - [ ] ~~`dssim_threshold`~~ - Removed (DSSIM is dev-only for regression tests)
 
 ### Not Yet Implemented
-- [ ] `png.lossless_level: u8` (0-6)
+- [x] `png.optimization_level: u8` (0-6)
 - [ ] `png.lossy_quantize: bool`
 - [ ] `webp.lossless: bool`
 - [ ] `webp.quantized_lossy: bool`
@@ -186,14 +187,18 @@ Tracking implementation of the [Technical Specification](SPEC.md) for the High-F
 
 ```
 src/
-├── lib.rs          # Public API exports
-├── config.rs       # Pipeline configuration structs
-├── color.rs        # Color space detection & transforms
-├── pipeline.rs     # Core processing pipeline
-└── main.rs         # CLI interface
+├── lib.rs              # Public API exports
+├── config.rs           # Pipeline configuration structs
+├── color.rs            # Color space detection & transforms
+├── pipeline.rs         # Core processing pipeline
+├── main.rs             # CLI interface
+└── formats/
+    ├── mod.rs          # Encoder trait & re-exports
+    ├── jpeg.rs         # JPEG encoding (mozjpeg)
+    └── png.rs          # PNG encoding (oxipng)
 
 tests/
-└── jpeg_pipeline.rs  # Integration tests
+└── jpeg_pipeline.rs    # Integration tests
 ```
 
 ---
@@ -201,8 +206,7 @@ tests/
 ## Next Steps (Suggested Priority)
 
 1. **EXIF Orientation** - Complete Phase A.0 normalization
-2. **PNG Encoding** - Integrate oxipng for lossless output
-3. **WebP Encoding** - Integrate libwebp for web-optimized output
-4. **Chroma Alignment** - Ensure even dimensions for subsampled formats
-5. **AVIF Encoding** - Modern format with CICP color management
-6. **DSSIM Tests** - Add perceptual regression tests (dev-only)
+2. **WebP Encoding** - Integrate libwebp for web-optimized output
+3. **Chroma Alignment** - Ensure even dimensions for subsampled formats
+4. **AVIF Encoding** - Modern format with CICP color management
+5. **DSSIM Tests** - Add perceptual regression tests (dev-only)

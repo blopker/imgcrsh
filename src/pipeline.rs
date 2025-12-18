@@ -2,23 +2,24 @@
 //!
 //! Implements the full pipeline: decode → color transform → resize → encode
 
-use crate::color::{extract_color_info, ColorTransformer, get_display_p3_icc, get_srgb_icc};
-use crate::config::{ChromaSubsampling, FilterType, PipelineConfig};
+use crate::color::{extract_color_info, get_display_p3_icc, get_srgb_icc, ColorTransformer};
+use crate::config::{FilterType, OutputFormat, PipelineConfig};
+use crate::formats::{Encoder, JpegEncoder, PngEncoder};
 use anyhow::{Context, Result};
 use fast_image_resize::{
-    images::Image, create_srgb_mapper, FilterType as FirFilterType,
-    ResizeAlg, ResizeOptions, Resizer,
+    create_srgb_mapper, images::Image, FilterType as FirFilterType, ResizeAlg, ResizeOptions,
+    Resizer,
 };
 use image::{DynamicImage, GenericImageView};
 
 /// Process an image through the pipeline
 ///
 /// # Arguments
-/// * `input` - Raw encoded image bytes (JPEG)
+/// * `input` - Raw encoded image bytes
 /// * `config` - Pipeline configuration
 ///
 /// # Returns
-/// * Encoded output bytes (JPEG)
+/// * Encoded output bytes in the configured format
 pub fn process(input: &[u8], config: &PipelineConfig) -> Result<Vec<u8>> {
     // === Phase A: Ingestion & Color Detection ===
 
@@ -51,12 +52,8 @@ pub fn process(input: &[u8], config: &PipelineConfig) -> Result<Vec<u8>> {
     // === Phase B: Spatial Transformation ===
 
     // Calculate target dimensions
-    let (dst_width, dst_height) = calculate_dimensions(
-        src_width,
-        src_height,
-        config.width,
-        config.height,
-    );
+    let (dst_width, dst_height) =
+        calculate_dimensions(src_width, src_height, config.width, config.height);
 
     // Resize if needed
     let resized = if dst_width != src_width || dst_height != src_height {
@@ -89,19 +86,25 @@ pub fn process(input: &[u8], config: &PipelineConfig) -> Result<Vec<u8>> {
         })
     };
 
-    // Encode to JPEG
-    let output = encode_jpeg(&resized, dst_width, dst_height, config, icc_profile.as_deref())?;
+    // Encode to target format
+    let output = match config.output_format {
+        OutputFormat::Jpeg => {
+            JpegEncoder::encode(&resized, dst_width, dst_height, &config.jpeg, icc_profile.as_deref())?
+        }
+        OutputFormat::Png => {
+            PngEncoder::encode(&resized, dst_width, dst_height, &config.png, icc_profile.as_deref())?
+        }
+    };
 
     Ok(output)
 }
 
 /// Decode input bytes to a DynamicImage
 fn decode_image(input: &[u8]) -> Result<DynamicImage> {
-    let format = image::guess_format(input)
-        .context("Failed to detect image format")?;
+    let format = image::guess_format(input).context("Failed to detect image format")?;
 
-    let img = image::load_from_memory_with_format(input, format)
-        .context("Failed to decode image")?;
+    let img =
+        image::load_from_memory_with_format(input, format).context("Failed to decode image")?;
 
     Ok(img)
 }
@@ -139,8 +142,14 @@ fn resize_image(
     filter: FilterType,
     linear_resampling: bool,
 ) -> Result<Vec<u8>> {
-    anyhow::ensure!(src_width > 0 && src_height > 0, "Invalid source dimensions");
-    anyhow::ensure!(dst_width > 0 && dst_height > 0, "Invalid destination dimensions");
+    anyhow::ensure!(
+        src_width > 0 && src_height > 0,
+        "Invalid source dimensions"
+    );
+    anyhow::ensure!(
+        dst_width > 0 && dst_height > 0,
+        "Invalid destination dimensions"
+    );
 
     // Create source image
     let mut src_image = Image::from_vec_u8(
@@ -151,11 +160,7 @@ fn resize_image(
     )?;
 
     // Create destination image
-    let mut dst_image = Image::new(
-        dst_width,
-        dst_height,
-        fast_image_resize::PixelType::U8x4,
-    );
+    let mut dst_image = Image::new(dst_width, dst_height, fast_image_resize::PixelType::U8x4);
 
     // Select filter type
     let fir_filter = match filter {
@@ -186,88 +191,32 @@ fn resize_image(
     Ok(dst_image.into_vec())
 }
 
-/// Encode pixels to JPEG using mozjpeg with optional ICC profile
-fn encode_jpeg(
-    rgba: &[u8],
-    width: u32,
-    height: u32,
-    config: &PipelineConfig,
-    icc_profile: Option<&[u8]>,
-) -> Result<Vec<u8>> {
-    // Convert RGBA to RGB for JPEG (drop alpha channel)
-    let rgb: Vec<u8> = rgba
-        .chunks_exact(4)
-        .flat_map(|pixel| [pixel[0], pixel[1], pixel[2]])
-        .collect();
-
-    // Determine effective settings
-    let quality = if config.jpeg.lossless { 100.0 } else { config.jpeg.quality as f32 };
-
-    // Force 4:4:4 for lossless mode per spec
-    let subsampling = if config.jpeg.lossless {
-        ChromaSubsampling::Yuv444
-    } else {
-        config.jpeg.chroma_subsampling
-    };
-
-    // Create mozjpeg encoder
-    let mut comp = mozjpeg::Compress::new(mozjpeg::ColorSpace::JCS_RGB);
-
-    comp.set_size(width as usize, height as usize);
-    comp.set_quality(quality);
-
-    // Set chroma subsampling
-    match subsampling {
-        ChromaSubsampling::Yuv444 => {
-            comp.set_chroma_sampling_pixel_sizes((1, 1), (1, 1));
-        }
-        ChromaSubsampling::Yuv422 => {
-            comp.set_chroma_sampling_pixel_sizes((2, 1), (2, 1));
-        }
-        ChromaSubsampling::Yuv420 => {
-            comp.set_chroma_sampling_pixel_sizes((2, 2), (2, 2));
-        }
-    };
-
-    // Enable progressive encoding if requested
-    if config.jpeg.progressive {
-        comp.set_progressive_mode();
-    }
-
-    // Start compression to memory
-    let mut comp = comp.start_compress(Vec::new())?;
-
-    // Inject ICC profile if provided (must be done after start_compress)
-    if let Some(icc) = icc_profile {
-        comp.write_icc_profile(icc);
-    }
-
-    // Write scanlines
-    comp.write_scanlines(&rgb)?;
-
-    // Finish and get output
-    let output = comp.finish()?;
-
-    Ok(output)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn test_calculate_dimensions_both_specified() {
-        assert_eq!(calculate_dimensions(1000, 800, Some(500), Some(400)), (500, 400));
+        assert_eq!(
+            calculate_dimensions(1000, 800, Some(500), Some(400)),
+            (500, 400)
+        );
     }
 
     #[test]
     fn test_calculate_dimensions_width_only() {
-        assert_eq!(calculate_dimensions(1000, 800, Some(500), None), (500, 400));
+        assert_eq!(
+            calculate_dimensions(1000, 800, Some(500), None),
+            (500, 400)
+        );
     }
 
     #[test]
     fn test_calculate_dimensions_height_only() {
-        assert_eq!(calculate_dimensions(1000, 800, None, Some(400)), (500, 400));
+        assert_eq!(
+            calculate_dimensions(1000, 800, None, Some(400)),
+            (500, 400)
+        );
     }
 
     #[test]
