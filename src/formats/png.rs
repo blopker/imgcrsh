@@ -5,10 +5,12 @@
 //! - Configurable compression levels
 //! - ICC profile injection
 //! - Alpha channel preservation
+//! - Lossy mode via imagequant (pngquant) with full RGBA support
 
 use super::Encoder;
 use anyhow::{Context, Result};
-use oxipng::{BitDepth, ColorType, Options, RawImage};
+use imagequant::{Attributes, RGBA};
+use oxipng::{BitDepth, ColorType, Options, RGBA8, RawImage};
 
 /// PNG encoding configuration
 #[derive(Debug, Clone)]
@@ -85,6 +87,51 @@ impl PngEncoder {
     }
 }
 
+impl PngEncoder {
+    /// Quantize RGBA image to 256-color palette using imagequant
+    /// Full RGBA support including semi-transparent pixels
+    fn quantize_to_palette(rgba: &[u8], width: u32, height: u32) -> Result<(Vec<u8>, Vec<RGBA8>)> {
+        // Convert raw bytes to RGBA pixels for imagequant
+        let pixels: Vec<RGBA> = rgba
+            .chunks_exact(4)
+            .map(|c| RGBA::new(c[0], c[1], c[2], c[3]))
+            .collect();
+
+        // Create quantization attributes
+        let mut attr = Attributes::new();
+        attr.set_max_colors(256)
+            .map_err(|e| anyhow::anyhow!("Failed to set max colors: {}", e))?;
+
+        // Create image from RGBA pixels
+        let mut img = attr
+            .new_image(&pixels[..], width as usize, height as usize, 0.0)
+            .map_err(|e| anyhow::anyhow!("Failed to create image: {}", e))?;
+
+        // Quantize to generate palette
+        let mut result = attr
+            .quantize(&mut img)
+            .map_err(|e| anyhow::anyhow!("Quantization failed: {}", e))?;
+
+        // Enable dithering for smooth gradients
+        result
+            .set_dithering_level(1.0)
+            .map_err(|e| anyhow::anyhow!("Failed to set dithering: {}", e))?;
+
+        // Remap pixels to palette indices
+        let (palette, indices) = result
+            .remapped(&mut img)
+            .map_err(|e| anyhow::anyhow!("Remapping failed: {}", e))?;
+
+        // Convert imagequant RGBA to oxipng RGBA8
+        let rgba_palette: Vec<RGBA8> = palette
+            .iter()
+            .map(|c| RGBA8::new(c.r, c.g, c.b, c.a))
+            .collect();
+
+        Ok((indices, rgba_palette))
+    }
+}
+
 impl Encoder for PngEncoder {
     type Config = PngConfig;
 
@@ -95,30 +142,52 @@ impl Encoder for PngEncoder {
         config: &Self::Config,
         icc_profile: Option<&[u8]>,
     ) -> Result<Vec<u8>> {
-        // Create RawImage from RGBA data
-        let mut raw = RawImage::new(
-            width,
-            height,
-            ColorType::RGBA,
-            BitDepth::Eight,
-            rgba.to_vec(),
-        )
-        .context("Failed to create raw PNG image")?;
-
-        // Add ICC profile if provided
-        if let Some(icc) = icc_profile {
-            raw.add_icc_profile(icc);
-        }
-
         // Build options
         let opts = Self::build_options(config);
 
-        // Create optimized PNG
-        let output = raw
-            .create_optimized_png(&opts)
-            .context("Failed to create optimized PNG")?;
+        if config.lossless {
+            // Lossless path: full RGBA
+            let mut raw = RawImage::new(
+                width,
+                height,
+                ColorType::RGBA,
+                BitDepth::Eight,
+                rgba.to_vec(),
+            )
+            .context("Failed to create raw PNG image")?;
 
-        Ok(output)
+            if let Some(icc) = icc_profile {
+                raw.add_icc_profile(icc);
+            }
+
+            let output = raw
+                .create_optimized_png(&opts)
+                .context("Failed to create optimized PNG")?;
+
+            Ok(output)
+        } else {
+            // Lossy path: quantize to 256-color palette
+            let (indices, palette) = Self::quantize_to_palette(rgba, width, height)?;
+
+            let mut raw = RawImage::new(
+                width,
+                height,
+                ColorType::Indexed { palette },
+                BitDepth::Eight,
+                indices,
+            )
+            .context("Failed to create indexed PNG image")?;
+
+            if let Some(icc) = icc_profile {
+                raw.add_icc_profile(icc);
+            }
+
+            let output = raw
+                .create_optimized_png(&opts)
+                .context("Failed to create optimized PNG")?;
+
+            Ok(output)
+        }
     }
 
     fn extension() -> &'static str {
@@ -172,5 +241,42 @@ mod tests {
 
         // Should produce valid PNG
         assert!(!output.is_empty());
+    }
+
+    #[test]
+    fn test_png_lossy_quantization() {
+        // Create a gradient image with many colors (16x16 = 256 pixels)
+        let rgba: Vec<u8> = (0..256)
+            .flat_map(|i| {
+                let r = (i % 16) * 16;
+                let g = (i / 16) * 16;
+                let b = 128;
+                [r as u8, g as u8, b, 255]
+            })
+            .collect();
+
+        // Lossy mode should produce palette-based PNG
+        let mut config = PngConfig::default();
+        config.lossless = false;
+        let lossy_output = PngEncoder::encode(&rgba, 16, 16, &config, None).unwrap();
+
+        // Lossless mode for comparison
+        config.lossless = true;
+        let lossless_output = PngEncoder::encode(&rgba, 16, 16, &config, None).unwrap();
+
+        // Both should be valid PNGs
+        assert_eq!(
+            &lossy_output[0..8],
+            &[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]
+        );
+        assert_eq!(
+            &lossless_output[0..8],
+            &[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]
+        );
+
+        // For this test image, lossy might be smaller or similar
+        // (small images may not show much difference)
+        assert!(!lossy_output.is_empty());
+        assert!(!lossless_output.is_empty());
     }
 }

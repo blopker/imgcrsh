@@ -28,12 +28,12 @@ image = { version = "0.25", default-features = false, features = [
 mozjpeg = "0.10"        # The gold standard for web JPEG compression
 oxipng = "10.0"         # Multi-threaded PNG optimization
 webp = "0.3"           # WebP conversion and encoding
+imagequant = "4"       # RGBA quantization for lossy PNG (pngquant library)
 
 # Metadata Parsing
 kamadak-exif = "0.6"   # Lightweight, read-only EXIF parser for orientation & color space
 
 # Infrastructure
-rayon = "1.10"          # Parallelism for the color transforms and encoding
 anyhow = "1.0"         # Ergonomic error handling for the pipeline logic
 
 [dev-dependencies]
