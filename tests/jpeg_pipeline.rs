@@ -110,33 +110,32 @@ fn test_lossless_mode() {
 }
 
 #[test]
-fn test_color_normalization_to_p3() {
+fn test_normalize_to_p3() {
     let input = create_test_jpeg(300, 200, 90);
 
-    // Enable color normalization to Display P3
+    // Normalize to Display P3 (preserve_icc: false is default)
     let config = PipelineConfig::new()
         .with_quality(80)
-        .with_color_normalization(true);
+        .with_preserve_icc(false);
 
     let output = process(&input, &config).expect("Pipeline should succeed");
 
-    // Output should be valid and contain ICC profile
+    // Output should be valid
+    // Note: P3 profile only embedded if source has ICC profile
     assert!(!output.is_empty());
-
-    // Check for ICC_PROFILE marker in output
-    let has_icc = output.windows(12).any(|w| w == b"ICC_PROFILE\0");
-
-    assert!(has_icc, "Output should contain ICC_PROFILE marker");
+    let decoded = image::load_from_memory(&output).expect("Output should be valid image");
+    assert_eq!(decoded.width(), 300);
+    assert_eq!(decoded.height(), 200);
 }
 
 #[test]
-fn test_color_normalization_disabled() {
+fn test_preserve_icc() {
     let input = create_test_jpeg(300, 200, 90);
 
-    // Disable color normalization
+    // Preserve original ICC profile
     let config = PipelineConfig::new()
         .with_quality(80)
-        .with_color_normalization(false);
+        .with_preserve_icc(true);
 
     let output = process(&input, &config).expect("Pipeline should succeed");
 

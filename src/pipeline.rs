@@ -1,14 +1,15 @@
 //! Core image processing pipeline
 //!
-//! Implements the full pipeline: decode → color transform → resize → encode
+//! Implements the full pipeline: decode → orientation → color transform → resize → encode
 
-use crate::color::{ColorTransformer, extract_color_info, get_display_p3_icc, get_srgb_icc};
+use crate::color::{extract_color_info, get_display_p3_icc, get_srgb_icc, ColorTransformer};
 use crate::config::{FilterType, OutputFormat, PipelineConfig};
 use crate::formats::{Encoder, JpegEncoder, PngEncoder};
+use crate::orientation::{apply_orientation, extract_orientation};
 use anyhow::{Context, Result};
 use fast_image_resize::{
-    FilterType as FirFilterType, ResizeAlg, ResizeOptions, Resizer, create_srgb_mapper,
-    images::Image,
+    create_srgb_mapper, images::Image, FilterType as FirFilterType, ResizeAlg, ResizeOptions,
+    Resizer,
 };
 use image::{DynamicImage, GenericImageView};
 
@@ -24,7 +25,10 @@ pub fn process(input: &[u8], config: &PipelineConfig) -> Result<Vec<u8>> {
     // Detect input format
     let input_format = image::guess_format(input).context("Failed to detect image format")?;
 
-    // === Phase A: Ingestion & Color Detection ===
+    // === Phase A: Ingestion & Normalization ===
+
+    // A.0: Extract EXIF orientation (before decoding changes anything)
+    let orientation = extract_orientation(input);
 
     // A.1: Extract color space info from source
     let color_info = extract_color_info(input);
@@ -34,22 +38,50 @@ pub fn process(input: &[u8], config: &PipelineConfig) -> Result<Vec<u8>> {
     let (src_width, src_height) = img.dimensions();
 
     // Convert to RGBA8 for processing
-    let mut rgba = img.to_rgba8().into_raw();
+    let rgba = img.to_rgba8().into_raw();
+
+    // A.0 (cont): Apply EXIF orientation transform
+    // Always bake orientation since we're re-encoding (EXIF won't be preserved)
+    let (mut rgba, src_width, src_height) = if orientation.needs_transform() {
+        apply_orientation(&rgba, src_width, src_height, orientation)?
+    } else {
+        (rgba, src_width, src_height)
+    };
 
     // A.2: Color normalization
-    // For quantized formats (lossy PNG), skip P3 conversion since quantization
-    // algorithms are optimized for sRGB. Only apply P3 for lossless output.
-    let uses_quantization = matches!(config.output_format, OutputFormat::Png) && !config.png.lossless;
-    let apply_p3 = config.color_normalization && !uses_quantization;
+    // - preserve_icc: true → no transform, keep original ICC
+    // - preserve_icc: false → normalize to P3 if source has profile, else sRGB
+    // - Quantized formats (lossy PNG) always stay in sRGB
+    let uses_quantization =
+        matches!(config.output_format, OutputFormat::Png) && !config.png.lossless;
+    let has_source_profile = color_info.icc_profile.is_some();
 
-    let color_transformer = if apply_p3 {
+    // Determine color handling strategy
+    let (apply_p3, preserve_original) = if config.preserve_icc {
+        // Preserve original - no transform needed if already sRGB
+        (false, true)
+    } else if uses_quantization {
+        // Quantized output - must stay in sRGB for accurate quantization
+        (false, false)
+    } else if has_source_profile {
+        // Has profile and not preserving - normalize to P3
+        (true, false)
+    } else {
+        // No profile - keep as sRGB
+        (false, false)
+    };
+
+    let color_transformer = if preserve_original {
+        // No color transform - preserve original
+        None
+    } else if apply_p3 {
         let transformer = ColorTransformer::new(&color_info, true)?;
         if transformer.needs_transform() {
             transformer.transform_rgba8(&mut rgba, src_width as usize)?;
         }
         Some(transformer)
     } else {
-        // Convert non-sRGB to sRGB (but not to P3)
+        // Convert non-sRGB to sRGB
         let transformer = ColorTransformer::new(&color_info, false)?;
         if transformer.needs_transform() {
             transformer.transform_rgba8(&mut rgba, src_width as usize)?;
@@ -81,7 +113,10 @@ pub fn process(input: &[u8], config: &PipelineConfig) -> Result<Vec<u8>> {
     // === Phase D: Format-Specific Encoding ===
 
     // Get ICC profile for output (matches color space used above)
-    let icc_profile = if apply_p3 {
+    let icc_profile = if preserve_original {
+        // Pass through original ICC profile
+        color_info.icc_profile.clone()
+    } else if apply_p3 {
         Some(get_display_p3_icc())
     } else {
         // Only embed sRGB if we did a color transform

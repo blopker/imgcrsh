@@ -111,7 +111,7 @@ impl PngEncoder {
 
         // Quality range: min quality allows more compression, max quality is target
         // Higher values = better color accuracy, larger files
-        let min_quality = quality.saturating_sub(20).max(0);
+        let min_quality = quality.saturating_sub(20);
         attr.set_quality(min_quality, quality)
             .map_err(|e| anyhow::anyhow!("Failed to set quality: {}", e))?;
 
@@ -185,7 +185,8 @@ impl Encoder for PngEncoder {
             Ok(output)
         } else {
             // Lossy path: quantize to 256-color palette
-            let (indices, palette) = Self::quantize_to_palette(rgba, width, height, config.quality)?;
+            let (indices, palette) =
+                Self::quantize_to_palette(rgba, width, height, config.quality)?;
 
             let mut raw = RawImage::new(
                 width,
@@ -274,8 +275,11 @@ mod tests {
             .collect();
 
         // Lossy mode should produce palette-based PNG
-        let mut config = PngConfig::default();
-        config.lossless = false;
+        let mut config = PngConfig {
+            lossless: false,
+            ..Default::default()
+        };
+
         let lossy_output = PngEncoder::encode(&rgba, 16, 16, &config, None).unwrap();
 
         // Lossless mode for comparison

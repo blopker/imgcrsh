@@ -25,10 +25,11 @@ pub enum OutputFormat {
 #[derive(Debug, Clone)]
 pub struct PipelineConfig {
     // === Normalization ===
-    /// When true, bakes Orientation/Flip into pixels and strips EXIF
+    /// When true, strips EXIF/XMP metadata (orientation is always baked)
     pub strip_metadata: bool,
-    /// Enforces target gamut transformation (to Display P3)
-    pub color_normalization: bool,
+    /// When true, preserves original ICC profile without color conversion
+    /// When false, normalizes to Display P3 (if source has profile) or keeps sRGB
+    pub preserve_icc: bool,
 
     // === Resampling ===
     /// Target width (None preserves original or aspect ratio)
@@ -53,7 +54,7 @@ impl Default for PipelineConfig {
     fn default() -> Self {
         Self {
             strip_metadata: true,
-            color_normalization: true,
+            preserve_icc: false, // Normalize to P3 by default
             width: None,
             height: None,
             filter_type: FilterType::Lanczos3,
@@ -96,9 +97,9 @@ impl PipelineConfig {
         self
     }
 
-    /// Enable/disable color normalization to Display P3
-    pub fn with_color_normalization(mut self, normalize: bool) -> Self {
-        self.color_normalization = normalize;
+    /// Preserve original ICC profile (true) or normalize to P3 (false)
+    pub fn with_preserve_icc(mut self, preserve: bool) -> Self {
+        self.preserve_icc = preserve;
         self
     }
 
