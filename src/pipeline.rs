@@ -36,15 +36,20 @@ pub fn process(input: &[u8], config: &PipelineConfig) -> Result<Vec<u8>> {
     // Convert to RGBA8 for processing
     let mut rgba = img.to_rgba8().into_raw();
 
-    // A.2: Color normalization (if enabled)
-    let color_transformer = if config.color_normalization {
+    // A.2: Color normalization
+    // For quantized formats (lossy PNG), skip P3 conversion since quantization
+    // algorithms are optimized for sRGB. Only apply P3 for lossless output.
+    let uses_quantization = matches!(config.output_format, OutputFormat::Png) && !config.png.lossless;
+    let apply_p3 = config.color_normalization && !uses_quantization;
+
+    let color_transformer = if apply_p3 {
         let transformer = ColorTransformer::new(&color_info, true)?;
         if transformer.needs_transform() {
             transformer.transform_rgba8(&mut rgba, src_width as usize)?;
         }
         Some(transformer)
     } else {
-        // Even without normalization, we may need to convert non-sRGB to sRGB
+        // Convert non-sRGB to sRGB (but not to P3)
         let transformer = ColorTransformer::new(&color_info, false)?;
         if transformer.needs_transform() {
             transformer.transform_rgba8(&mut rgba, src_width as usize)?;
@@ -75,8 +80,8 @@ pub fn process(input: &[u8], config: &PipelineConfig) -> Result<Vec<u8>> {
 
     // === Phase D: Format-Specific Encoding ===
 
-    // Get ICC profile for output
-    let icc_profile = if config.color_normalization {
+    // Get ICC profile for output (matches color space used above)
+    let icc_profile = if apply_p3 {
         Some(get_display_p3_icc())
     } else {
         // Only embed sRGB if we did a color transform

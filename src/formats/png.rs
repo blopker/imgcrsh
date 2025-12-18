@@ -24,8 +24,11 @@ pub struct PngConfig {
     pub strip_metadata: bool,
     /// Enable interlacing (Adam7)
     pub interlace: bool,
-    // Set lossless optimizations
+    /// Lossless mode (true) or lossy quantization (false)
     pub lossless: bool,
+    /// Lossy quality (0-100, higher = better colors, larger file)
+    /// Only used when lossless = false
+    pub quality: u8,
 }
 
 impl Default for PngConfig {
@@ -35,6 +38,7 @@ impl Default for PngConfig {
             strip_metadata: true,
             interlace: false,
             lossless: true,
+            quality: 90, // High quality default for minimal color loss
         }
     }
 }
@@ -90,17 +94,31 @@ impl PngEncoder {
 impl PngEncoder {
     /// Quantize RGBA image to 256-color palette using imagequant
     /// Full RGBA support including semi-transparent pixels
-    fn quantize_to_palette(rgba: &[u8], width: u32, height: u32) -> Result<(Vec<u8>, Vec<RGBA8>)> {
+    fn quantize_to_palette(
+        rgba: &[u8],
+        width: u32,
+        height: u32,
+        quality: u8,
+    ) -> Result<(Vec<u8>, Vec<RGBA8>)> {
         // Convert raw bytes to RGBA pixels for imagequant
         let pixels: Vec<RGBA> = rgba
             .chunks_exact(4)
             .map(|c| RGBA::new(c[0], c[1], c[2], c[3]))
             .collect();
 
-        // Create quantization attributes
+        // Create quantization attributes with quality settings
         let mut attr = Attributes::new();
-        attr.set_max_colors(256)
-            .map_err(|e| anyhow::anyhow!("Failed to set max colors: {}", e))?;
+
+        // Quality range: min quality allows more compression, max quality is target
+        // Higher values = better color accuracy, larger files
+        let min_quality = quality.saturating_sub(20).max(0);
+        attr.set_quality(min_quality, quality)
+            .map_err(|e| anyhow::anyhow!("Failed to set quality: {}", e))?;
+
+        // Slower speed = better quality (1 = best, 10 = fastest)
+        // Use speed 3 for good quality/speed balance
+        attr.set_speed(3)
+            .map_err(|e| anyhow::anyhow!("Failed to set speed: {}", e))?;
 
         // Create image from RGBA pixels
         let mut img = attr
@@ -167,7 +185,7 @@ impl Encoder for PngEncoder {
             Ok(output)
         } else {
             // Lossy path: quantize to 256-color palette
-            let (indices, palette) = Self::quantize_to_palette(rgba, width, height)?;
+            let (indices, palette) = Self::quantize_to_palette(rgba, width, height, config.quality)?;
 
             let mut raw = RawImage::new(
                 width,
