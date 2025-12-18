@@ -10,7 +10,8 @@
       "Bash(cargo doc:*)",
       "Bash(grep:*)",
       "Bash(identify -verbose:*)",
-      "Bash(identify:*)"
+      "Bash(identify:*)",
+      "Bash(exiftool:*)"
     ]
   }
 }

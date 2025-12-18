@@ -8,16 +8,30 @@ fn main() -> Result<()> {
     let args: Vec<String> = env::args().collect();
 
     if args.len() < 3 {
-        eprintln!("Usage: {} <input> <output> [quality]", args[0]);
+        eprintln!("Usage: {} <input> <output> [quality] [--preserve-icc]", args[0]);
         eprintln!();
         eprintln!("Output format is determined by file extension (.jpg, .png)");
         eprintln!("Quality: 1-100 for JPEG (default: 75), 0-6 for PNG optimization (default: 2)");
+        eprintln!();
+        eprintln!("Options:");
+        eprintln!("  --preserve-icc  Keep original ICC profile (no color normalization)");
         std::process::exit(1);
     }
 
+    // Parse arguments
     let input_path = &args[1];
     let output_path = &args[2];
-    let quality: u8 = args.get(3).and_then(|q| q.parse().ok()).unwrap_or(75);
+
+    // Check for flags
+    let preserve_icc = args.iter().any(|a| a == "--preserve-icc");
+
+    // Parse quality (skip flags)
+    let quality: u8 = args
+        .iter()
+        .skip(3)
+        .find(|a| !a.starts_with("--"))
+        .and_then(|q| q.parse().ok())
+        .unwrap_or(75);
 
     // Read input file
     let input = fs::read(input_path)?;
@@ -46,12 +60,18 @@ fn main() -> Result<()> {
         OutputFormat::Jpeg => PipelineConfig::new()
             .with_format(OutputFormat::Jpeg)
             .with_quality(quality)
-            .with_lossless(false),
+            .with_lossless(false)
+            .with_preserve_icc(preserve_icc),
         OutputFormat::Png => PipelineConfig::new()
             .with_format(OutputFormat::Png)
             .with_png_optimization(quality.min(6))
-            .with_lossless(false),
+            .with_lossless(false)
+            .with_preserve_icc(preserve_icc),
     };
+
+    if preserve_icc {
+        println!("Preserving original ICC profile");
+    }
 
     // Process image
     let output = process(&input, &config)?;

@@ -117,7 +117,17 @@ pub fn process(input: &[u8], config: &PipelineConfig) -> Result<Vec<u8>> {
         // Pass through original ICC profile
         color_info.icc_profile.clone()
     } else if apply_p3 {
-        Some(get_display_p3_icc())
+        // If source was already P3 and no transform happened, keep original profile
+        // (different P3 profiles can have different tone curves)
+        let did_transform = color_transformer
+            .as_ref()
+            .map(|t| t.needs_transform())
+            .unwrap_or(false);
+        if !did_transform && color_info.icc_profile.is_some() {
+            color_info.icc_profile.clone()
+        } else {
+            Some(get_display_p3_icc())
+        }
     } else {
         // Only embed sRGB if we did a color transform
         color_transformer.as_ref().and_then(|t| {
