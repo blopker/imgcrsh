@@ -10,8 +10,8 @@ fn main() -> Result<()> {
     if args.len() < 3 {
         eprintln!("Usage: {} <input> <output> [quality] [--preserve-icc]", args[0]);
         eprintln!();
-        eprintln!("Output format is determined by file extension (.jpg, .png)");
-        eprintln!("Quality: 1-100 for JPEG (default: 75), 0-6 for PNG optimization (default: 2)");
+        eprintln!("Output format is determined by file extension (.jpg, .png, .webp)");
+        eprintln!("Quality: 1-100 for JPEG/WebP (default: 75/80), 0-6 for PNG optimization (default: 2)");
         eprintln!();
         eprintln!("Options:");
         eprintln!("  --preserve-icc  Keep original ICC profile (no color normalization)");
@@ -46,8 +46,9 @@ fn main() -> Result<()> {
     {
         Some("png") => OutputFormat::Png,
         Some("jpg") | Some("jpeg") => OutputFormat::Jpeg,
+        Some("webp") => OutputFormat::WebP,
         _ => {
-            eprintln!("Unknown output format. Use .jpg or .png extension.");
+            eprintln!("Unknown output format. Use .jpg, .png, or .webp extension.");
             std::process::exit(1);
         }
     };
@@ -65,6 +66,11 @@ fn main() -> Result<()> {
         OutputFormat::Png => PipelineConfig::new()
             .with_format(OutputFormat::Png)
             .with_png_optimization(quality.min(6))
+            .with_lossless(false)
+            .with_preserve_icc(preserve_icc),
+        OutputFormat::WebP => PipelineConfig::new()
+            .with_format(OutputFormat::WebP)
+            .with_quality(quality)
             .with_lossless(false)
             .with_preserve_icc(preserve_icc),
     };

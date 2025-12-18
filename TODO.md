@@ -12,7 +12,7 @@ Tracking implementation of the [Technical Specification](SPEC.md) for the High-F
 - [x] `imagequant` - RGBA quantization for lossy PNG (pngquant library)
 - [x] `mozjpeg` - JPEG encoding
 - [x] `oxipng` - PNG optimization
-- [x] `webp` - WebP encoding (dependency added, not integrated)
+- [x] `webp` - WebP encoding
 - [ ] `ravif` - AVIF encoding
 - [ ] `zune-jpegxl` / `libjxl` - JPEG XL encoding
 - [ ] `gifski` - GIF encoding
@@ -96,9 +96,11 @@ Tracking implementation of the [Technical Specification](SPEC.md) for the High-F
 - Note: Quantized formats stay in sRGB (imagequant is sRGB-optimized)
 
 ### WebP
-- [ ] libwebp integration
-- [ ] Lossless mode (VP8L)
-- [ ] Lossy mode (Method 6, SNS strength)
+- [x] libwebp integration
+- [x] Lossless mode (VP8L)
+- [x] Lossy mode with quality setting (method 6 for best compression)
+- [x] ICC profile embedding via VP8X extended format
+- [ ] Advanced options (SNS strength, near-lossless)
 - [ ] Quantized lossy mode (Oklab + lossless)
 
 ### AVIF
@@ -143,11 +145,13 @@ Tracking implementation of the [Technical Specification](SPEC.md) for the High-F
 - [x] `png.optimization_level: u8` (0-6)
 - [x] `png.lossless: bool` (default: true)
 - [x] `png.quality: u8` (default: 90) - for lossy mode
+- [x] `webp.lossless: bool` (default: false)
+- [x] `webp.quality: u8` (default: 80)
 
 ### Not Yet Implemented
-- [ ] `webp.lossless: bool`
 - [ ] `webp.quantized_lossy: bool`
 - [ ] `webp.sns_strength: u8`
+- [ ] `webp.method: u8` (0-6)
 - [ ] `avif.speed: u8` (0-10)
 - [ ] `avif.quantizer: u8` (0-63)
 - [ ] `jxl.effort: u8` (1-9)
@@ -202,7 +206,8 @@ src/
 └── formats/
     ├── mod.rs          # Encoder trait & re-exports
     ├── jpeg.rs         # JPEG encoding (mozjpeg + ICC injection fix)
-    └── png.rs          # PNG encoding (oxipng + imagequant)
+    ├── png.rs          # PNG encoding (oxipng + imagequant)
+    └── webp.rs         # WebP encoding (libwebp)
 
 tests/
 └── jpeg_pipeline.rs    # Integration tests
@@ -214,8 +219,8 @@ scratch/                # Development utilities (not part of library)
 
 ## Next Steps (Suggested Priority)
 
-1. **WebP Encoding** - Integrate libwebp for web-optimized output
+1. **AVIF Encoding** - Modern format with CICP color management
 2. **Chroma Alignment** - Ensure even dimensions for subsampled formats
-3. **AVIF Encoding** - Modern format with CICP color management
-4. **DSSIM Tests** - Add perceptual regression tests (dev-only)
-5. **CLI Enhancements** - Add more options to main.rs
+3. **DSSIM Tests** - Add perceptual regression tests (dev-only)
+4. **CLI Enhancements** - Add more options to main.rs (lossless flag, resize)
+5. **JPEG XL Encoding** - Future-proof format support

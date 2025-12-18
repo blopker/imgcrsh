@@ -1,6 +1,6 @@
 //! Pipeline configuration types
 
-use crate::formats::{jpeg::JpegConfig, png::PngConfig};
+use crate::formats::{jpeg::JpegConfig, png::PngConfig, webp::WebpConfig};
 
 /// Resampling filter types for spatial transformation
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -18,7 +18,8 @@ pub enum OutputFormat {
     #[default]
     Jpeg,
     Png,
-    // Future: WebP, Avif, JpegXl, Tiff, Gif
+    WebP,
+    // Future: Avif, JpegXl, Tiff, Gif
 }
 
 /// Main pipeline configuration
@@ -48,6 +49,8 @@ pub struct PipelineConfig {
     pub jpeg: JpegConfig,
     /// PNG-specific options
     pub png: PngConfig,
+    /// WebP-specific options
+    pub webp: WebpConfig,
 }
 
 impl Default for PipelineConfig {
@@ -62,6 +65,7 @@ impl Default for PipelineConfig {
             output_format: OutputFormat::Jpeg,
             jpeg: JpegConfig::default(),
             png: PngConfig::default(),
+            webp: WebpConfig::default(),
         }
     }
 }
@@ -85,9 +89,12 @@ impl PipelineConfig {
         self
     }
 
-    /// Set JPEG quality (1-100)
+    /// Set quality for all lossy formats (1-100)
     pub fn with_quality(mut self, quality: u8) -> Self {
-        self.jpeg.quality = quality.clamp(1, 100);
+        let q = quality.clamp(1, 100);
+        self.jpeg.quality = q;
+        self.png.quality = q;
+        self.webp.quality = q;
         self
     }
 
@@ -103,10 +110,11 @@ impl PipelineConfig {
         self
     }
 
-    /// Enable lossless JPEG mode
+    /// Enable lossless mode for all formats
     pub fn with_lossless(mut self, lossless: bool) -> Self {
         self.jpeg.lossless = lossless;
         self.png.lossless = lossless;
+        self.webp.lossless = lossless;
         self
     }
 

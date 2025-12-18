@@ -14,7 +14,8 @@
       "Bash(exiftool:*)",
       "Bash(xattr:*)",
       "WebFetch(domain:github.com)",
-      "WebFetch(domain:raw.githubusercontent.com)"
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(xxd:*)"
     ]
   }
 }

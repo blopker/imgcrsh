@@ -4,9 +4,11 @@
 
 pub mod jpeg;
 pub mod png;
+pub mod webp;
 
 pub use jpeg::{ChromaSubsampling, JpegConfig, JpegEncoder};
 pub use png::{PngConfig, PngEncoder};
+pub use webp::{WebpConfig, WebpEncoder};
 
 use anyhow::Result;
 
