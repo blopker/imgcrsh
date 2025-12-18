@@ -45,10 +45,12 @@ fn main() -> Result<()> {
     let config = match output_format {
         OutputFormat::Jpeg => PipelineConfig::new()
             .with_format(OutputFormat::Jpeg)
-            .with_quality(quality),
+            .with_quality(quality)
+            .with_lossless(false),
         OutputFormat::Png => PipelineConfig::new()
             .with_format(OutputFormat::Png)
-            .with_png_optimization(quality.min(6)),
+            .with_png_optimization(quality.min(6))
+            .with_lossless(false),
     };
 
     // Process image
@@ -59,7 +61,10 @@ fn main() -> Result<()> {
     fs::write(output_path, &output)?;
 
     let ratio = (output_size as f64 / input_size as f64) * 100.0;
-    println!("Output size: {} bytes ({:.1}% of original)", output_size, ratio);
+    println!(
+        "Output size: {} bytes ({:.1}% of original)",
+        output_size, ratio
+    );
     println!("Saved to: {}", output_path);
 
     Ok(())

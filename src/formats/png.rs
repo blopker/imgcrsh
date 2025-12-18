@@ -22,6 +22,8 @@ pub struct PngConfig {
     pub strip_metadata: bool,
     /// Enable interlacing (Adam7)
     pub interlace: bool,
+    // Set lossless optimizations
+    pub lossless: bool,
 }
 
 impl Default for PngConfig {
@@ -30,6 +32,7 @@ impl Default for PngConfig {
             optimization_level: 2,
             strip_metadata: true,
             interlace: false,
+            lossless: true,
         }
     }
 }
@@ -61,37 +64,21 @@ pub struct PngEncoder;
 impl PngEncoder {
     /// Build oxipng Options from our config
     fn build_options(config: &PngConfig) -> Options {
-        let mut opts = Options::default();
-
-        // Set interlacing preference
-        opts.interlace = Some(config.interlace);
-
         // Configure based on optimization level
         // Higher levels use more filter strategies and compression effort
-        match config.optimization_level {
-            0 => {
-                // Fast mode - minimal optimization
-                opts.bit_depth_reduction = false;
-                opts.color_type_reduction = false;
-                opts.palette_reduction = false;
-            }
-            1..=2 => {
-                // Default mode - good balance
-                opts.bit_depth_reduction = true;
-                opts.color_type_reduction = true;
-                opts.palette_reduction = true;
-            }
-            _ => {
-                // High optimization mode (3-6)
-                opts.bit_depth_reduction = true;
-                opts.color_type_reduction = true;
-                opts.palette_reduction = true;
-            }
-        }
+        let mut opts = Options::from_preset(config.optimization_level.clamp(0, 6));
 
         // Strip metadata if requested
         if config.strip_metadata {
             opts.strip = oxipng::StripChunks::Safe;
+        }
+
+        opts.interlace = Some(config.interlace);
+        opts.force = true;
+
+        if !config.lossless {
+            opts.optimize_alpha = true;
+            opts.scale_16 = true;
         }
 
         opts
@@ -167,7 +154,10 @@ mod tests {
 
         // Should produce valid PNG (starts with PNG signature)
         assert!(output.len() > 8);
-        assert_eq!(&output[0..8], &[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]);
+        assert_eq!(
+            &output[0..8],
+            &[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]
+        );
     }
 
     #[test]

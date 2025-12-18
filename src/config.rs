@@ -105,6 +105,7 @@ impl PipelineConfig {
     /// Enable lossless JPEG mode
     pub fn with_lossless(mut self, lossless: bool) -> Self {
         self.jpeg.lossless = lossless;
+        self.png.lossless = lossless;
         self
     }
 

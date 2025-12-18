@@ -2,13 +2,13 @@
 //!
 //! Implements the full pipeline: decode → color transform → resize → encode
 
-use crate::color::{extract_color_info, get_display_p3_icc, get_srgb_icc, ColorTransformer};
+use crate::color::{ColorTransformer, extract_color_info, get_display_p3_icc, get_srgb_icc};
 use crate::config::{FilterType, OutputFormat, PipelineConfig};
 use crate::formats::{Encoder, JpegEncoder, PngEncoder};
 use anyhow::{Context, Result};
 use fast_image_resize::{
-    create_srgb_mapper, images::Image, FilterType as FirFilterType, ResizeAlg, ResizeOptions,
-    Resizer,
+    FilterType as FirFilterType, ResizeAlg, ResizeOptions, Resizer, create_srgb_mapper,
+    images::Image,
 };
 use image::{DynamicImage, GenericImageView};
 
@@ -21,13 +21,16 @@ use image::{DynamicImage, GenericImageView};
 /// # Returns
 /// * Encoded output bytes in the configured format
 pub fn process(input: &[u8], config: &PipelineConfig) -> Result<Vec<u8>> {
+    // Detect input format
+    let input_format = image::guess_format(input).context("Failed to detect image format")?;
+
     // === Phase A: Ingestion & Color Detection ===
 
     // A.1: Extract color space info from source
     let color_info = extract_color_info(input);
 
     // Decode image pixels
-    let img = decode_image(input)?;
+    let img = decode_image_with_format(input, input_format)?;
     let (src_width, src_height) = img.dimensions();
 
     // Convert to RGBA8 for processing
@@ -88,21 +91,27 @@ pub fn process(input: &[u8], config: &PipelineConfig) -> Result<Vec<u8>> {
 
     // Encode to target format
     let output = match config.output_format {
-        OutputFormat::Jpeg => {
-            JpegEncoder::encode(&resized, dst_width, dst_height, &config.jpeg, icc_profile.as_deref())?
-        }
-        OutputFormat::Png => {
-            PngEncoder::encode(&resized, dst_width, dst_height, &config.png, icc_profile.as_deref())?
-        }
+        OutputFormat::Jpeg => JpegEncoder::encode(
+            &resized,
+            dst_width,
+            dst_height,
+            &config.jpeg,
+            icc_profile.as_deref(),
+        )?,
+        OutputFormat::Png => PngEncoder::encode(
+            &resized,
+            dst_width,
+            dst_height,
+            &config.png,
+            icc_profile.as_deref(),
+        )?,
     };
 
     Ok(output)
 }
 
-/// Decode input bytes to a DynamicImage
-fn decode_image(input: &[u8]) -> Result<DynamicImage> {
-    let format = image::guess_format(input).context("Failed to detect image format")?;
-
+/// Decode input bytes to a DynamicImage with known format
+fn decode_image_with_format(input: &[u8], format: image::ImageFormat) -> Result<DynamicImage> {
     let img =
         image::load_from_memory_with_format(input, format).context("Failed to decode image")?;
 
@@ -142,10 +151,7 @@ fn resize_image(
     filter: FilterType,
     linear_resampling: bool,
 ) -> Result<Vec<u8>> {
-    anyhow::ensure!(
-        src_width > 0 && src_height > 0,
-        "Invalid source dimensions"
-    );
+    anyhow::ensure!(src_width > 0 && src_height > 0, "Invalid source dimensions");
     anyhow::ensure!(
         dst_width > 0 && dst_height > 0,
         "Invalid destination dimensions"
@@ -205,18 +211,12 @@ mod tests {
 
     #[test]
     fn test_calculate_dimensions_width_only() {
-        assert_eq!(
-            calculate_dimensions(1000, 800, Some(500), None),
-            (500, 400)
-        );
+        assert_eq!(calculate_dimensions(1000, 800, Some(500), None), (500, 400));
     }
 
     #[test]
     fn test_calculate_dimensions_height_only() {
-        assert_eq!(
-            calculate_dimensions(1000, 800, None, Some(400)),
-            (500, 400)
-        );
+        assert_eq!(calculate_dimensions(1000, 800, None, Some(400)), (500, 400));
     }
 
     #[test]
