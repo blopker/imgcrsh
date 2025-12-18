@@ -1,0 +1,34 @@
+[package]
+name = "imgcrsh"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+# The Core: High-performance color management (SIMD accelerated)
+# Replaces lcms2 for web-standard transforms.
+moxcms = "0.7"
+
+# The Muscle: Best-in-class image resizing using SIMD (AVX2/NEON)
+# Supports Lanczos3 and linear-light resampling.
+fast_image_resize = { version = "5.4", features = ["rayon"] }
+
+# The Swiss Army Knife: Format decoding and general pixel handling
+# We disable default features to keep the binary lean and avoid bloat.
+image = { version = "0.25", default-features = false, features = [
+    "jpeg",
+    "png",
+    "webp",
+    "tiff",
+    "gif",
+    "avif"
+] }
+
+# The Optimizers: Industry-standard encoding libraries
+# We use these directly for better control over quantization and metadata injection.
+mozjpeg = "0.10"        # The gold standard for web JPEG compression
+oxipng = "10.0"         # Multi-threaded PNG optimization
+webp = "0.3"           # WebP conversion and encoding
+
+# Infrastructure
+rayon = "1.10"          # Parallelism for the color transforms and encoding
+anyhow = "1.0"         # Ergonomic error handling for the pipeline logic
