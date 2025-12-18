@@ -9,6 +9,11 @@
 use super::Encoder;
 use anyhow::Result;
 
+/// Maximum size of ICC profile data per APP2 segment (64KB - overhead)
+const ICC_CHUNK_SIZE: usize = 65519;
+/// ICC profile marker identifier
+const ICC_MARKER: &[u8] = b"ICC_PROFILE\x00";
+
 /// Chroma subsampling modes for JPEG encoding
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum ChromaSubsampling {
@@ -127,16 +132,19 @@ impl Encoder for JpegEncoder {
         // Start compression to memory
         let mut comp = comp.start_compress(Vec::new())?;
 
-        // Inject ICC profile if provided (must be done after start_compress)
-        if let Some(icc) = icc_profile {
-            comp.write_icc_profile(icc);
-        }
+        // Don't use mozjpeg's write_icc_profile - it has a bug with 0-indexed chunks
+        // We'll inject the ICC profile ourselves after encoding
 
         // Write scanlines
         comp.write_scanlines(&rgb)?;
 
         // Finish and get output
-        let output = comp.finish()?;
+        let mut output = comp.finish()?;
+
+        // Inject ICC profile with correct 1-indexed chunk numbering
+        if let Some(icc) = icc_profile {
+            output = inject_icc_profile(&output, icc)?;
+        }
 
         Ok(output)
     }
@@ -148,6 +156,75 @@ impl Encoder for JpegEncoder {
     fn mime_type() -> &'static str {
         "image/jpeg"
     }
+}
+
+/// Inject ICC profile into JPEG with correct 1-indexed chunk numbering
+///
+/// The ICC profile spec for JPEG requires chunks to be numbered 1 to N,
+/// not 0 to N-1. mozjpeg-rust has a bug where it uses 0-indexed chunks.
+fn inject_icc_profile(jpeg: &[u8], icc_profile: &[u8]) -> Result<Vec<u8>> {
+    // Find insertion point after SOI and JFIF/APP0
+    let insert_pos = find_icc_insert_position(jpeg)?;
+
+    // Build ICC profile APP2 segments with 1-indexed chunk numbers
+    let chunks: Vec<&[u8]> = icc_profile.chunks(ICC_CHUNK_SIZE).collect();
+    let num_chunks = chunks.len() as u8;
+
+    let mut icc_segments = Vec::new();
+    for (i, chunk) in chunks.iter().enumerate() {
+        let chunk_num = (i + 1) as u8; // 1-indexed!
+
+        // APP2 segment: FF E2 + length (2 bytes) + "ICC_PROFILE\0" + chunk_num + num_chunks + data
+        // Length field includes itself (2 bytes) + marker + chunk info + data
+        let segment_len = 2 + ICC_MARKER.len() + 2 + chunk.len();
+
+        icc_segments.push(0xFF);
+        icc_segments.push(0xE2);
+        icc_segments.push(((segment_len >> 8) & 0xFF) as u8);
+        icc_segments.push((segment_len & 0xFF) as u8);
+        icc_segments.extend_from_slice(ICC_MARKER);
+        icc_segments.push(chunk_num);
+        icc_segments.push(num_chunks);
+        icc_segments.extend_from_slice(chunk);
+    }
+
+    // Build output: [SOI + APP0] + [ICC segments] + [rest of JPEG]
+    let mut output = Vec::with_capacity(jpeg.len() + icc_segments.len());
+    output.extend_from_slice(&jpeg[..insert_pos]);
+    output.extend_from_slice(&icc_segments);
+    output.extend_from_slice(&jpeg[insert_pos..]);
+
+    Ok(output)
+}
+
+/// Find the position to insert ICC profile (after SOI and APP0/JFIF)
+fn find_icc_insert_position(jpeg: &[u8]) -> Result<usize> {
+    anyhow::ensure!(
+        jpeg.len() >= 2 && jpeg[0] == 0xFF && jpeg[1] == 0xD8,
+        "Invalid JPEG: missing SOI marker"
+    );
+
+    let mut pos = 2; // After SOI
+
+    // Skip APP0 (JFIF) if present
+    while pos + 4 < jpeg.len() {
+        if jpeg[pos] != 0xFF {
+            break;
+        }
+
+        let marker = jpeg[pos + 1];
+
+        // APP0 = 0xE0
+        if marker == 0xE0 {
+            let len = u16::from_be_bytes([jpeg[pos + 2], jpeg[pos + 3]]) as usize;
+            pos += 2 + len;
+        } else {
+            // Stop at any other marker
+            break;
+        }
+    }
+
+    Ok(pos)
 }
 
 #[cfg(test)]

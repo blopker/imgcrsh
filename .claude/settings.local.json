@@ -11,7 +11,10 @@
       "Bash(grep:*)",
       "Bash(identify -verbose:*)",
       "Bash(identify:*)",
-      "Bash(exiftool:*)"
+      "Bash(exiftool:*)",
+      "Bash(xattr:*)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)"
     ]
   }
 }

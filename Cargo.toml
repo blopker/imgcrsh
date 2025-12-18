@@ -38,3 +38,15 @@ anyhow = "1.0"         # Ergonomic error handling for the pipeline logic
 
 [dev-dependencies]
 dssim = "3.3"          # Perceptual image quality testing
+
+[[bin]]
+name = "compare"
+path = "scratch/compare.rs"
+
+[[bin]]
+name = "compare_icc"
+path = "scratch/compare_icc.rs"
+
+[[bin]]
+name = "compare_app2"
+path = "scratch/compare_app2.rs"
