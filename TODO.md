@@ -100,8 +100,6 @@ Tracking implementation of the [Technical Specification](SPEC.md) for the High-F
 - [x] Lossless mode (VP8L)
 - [x] Lossy mode with quality setting (method 6 for best compression)
 - [x] ICC profile embedding via VP8X extended format
-- [ ] Advanced options (SNS strength, near-lossless)
-- [ ] Quantized lossy mode (Oklab + lossless)
 
 ### AVIF
 - [ ] ravif/libavif integration
@@ -149,9 +147,6 @@ Tracking implementation of the [Technical Specification](SPEC.md) for the High-F
 - [x] `webp.quality: u8` (default: 80)
 
 ### Not Yet Implemented
-- [ ] `webp.quantized_lossy: bool`
-- [ ] `webp.sns_strength: u8`
-- [ ] `webp.method: u8` (0-6)
 - [ ] `avif.speed: u8` (0-10)
 - [ ] `avif.quantizer: u8` (0-63)
 - [ ] `jxl.effort: u8` (1-9)
