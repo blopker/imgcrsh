@@ -70,12 +70,11 @@ pub fn extract_orientation(data: &[u8]) -> Orientation {
         Err(_) => return Orientation::Normal,
     };
 
-    if let Some(field) = exif.get_field(exif::Tag::Orientation, exif::In::PRIMARY) {
-        if let exif::Value::Short(values) = &field.value {
-            if let Some(&value) = values.first() {
-                return Orientation::from_exif_value(value);
-            }
-        }
+    if let Some(field) = exif.get_field(exif::Tag::Orientation, exif::In::PRIMARY)
+        && let exif::Value::Short(values) = &field.value
+        && let Some(&value) = values.first()
+    {
+        return Orientation::from_exif_value(value);
     }
 
     Orientation::Normal

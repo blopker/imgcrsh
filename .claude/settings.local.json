@@ -15,7 +15,8 @@
       "Bash(xattr:*)",
       "WebFetch(domain:github.com)",
       "WebFetch(domain:raw.githubusercontent.com)",
-      "Bash(xxd:*)"
+      "Bash(xxd:*)",
+      "Bash(cargo clippy:*)"
     ]
   }
 }

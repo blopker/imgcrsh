@@ -138,7 +138,7 @@ fn inject_icc_profile(webp: &[u8], icc_profile: &[u8], width: u32, height: u32) 
 
     // Build ICCP chunk
     let icc_size = icc_profile.len() as u32;
-    let icc_padded = icc_size % 2 != 0; // RIFF chunks must be even-aligned
+    let icc_padded = !icc_size.is_multiple_of(2); // RIFF chunks must be even-aligned
 
     let mut iccp = Vec::with_capacity(8 + icc_profile.len() + if icc_padded { 1 } else { 0 });
     iccp.extend_from_slice(b"ICCP");

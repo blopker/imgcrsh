@@ -95,13 +95,14 @@ pub fn extract_icc_from_jpeg(data: &[u8]) -> Option<Vec<u8>> {
         pos += length - 2;
 
         // APP2 marker (0xE2) with ICC_PROFILE header
-        if marker == 0xE2 && segment_data.len() > 14 {
-            if &segment_data[0..12] == b"ICC_PROFILE\0" {
-                let chunk_num = segment_data[12];
-                let total_chunks = segment_data[13];
-                let profile_data = segment_data[14..].to_vec();
-                chunks.push((chunk_num, total_chunks, profile_data));
-            }
+        if marker == 0xE2
+            && segment_data.len() > 14
+            && &segment_data[0..12] == b"ICC_PROFILE\0"
+        {
+            let chunk_num = segment_data[12];
+            let total_chunks = segment_data[13];
+            let profile_data = segment_data[14..].to_vec();
+            chunks.push((chunk_num, total_chunks, profile_data));
         }
     }
 
@@ -126,18 +127,18 @@ pub fn detect_color_space(icc_data: &[u8]) -> SourceColorSpace {
     // Try to parse the ICC profile description
     if let Ok(profile) = ColorProfile::new_from_slice(icc_data) {
         // Check profile description for known color spaces
-        if let Some(ref desc_text) = profile.description {
-            if let Some(desc) = profile_text_to_string(desc_text) {
-                let desc_lower = desc.to_lowercase();
-                if desc_lower.contains("display p3") || desc_lower.contains("p3") {
-                    return SourceColorSpace::DisplayP3;
-                }
-                if desc_lower.contains("adobe rgb") || desc_lower.contains("adobergb") {
-                    return SourceColorSpace::AdobeRgb;
-                }
-                if desc_lower.contains("srgb") || desc_lower.contains("iec61966") {
-                    return SourceColorSpace::Srgb;
-                }
+        if let Some(ref desc_text) = profile.description
+            && let Some(desc) = profile_text_to_string(desc_text)
+        {
+            let desc_lower = desc.to_lowercase();
+            if desc_lower.contains("display p3") || desc_lower.contains("p3") {
+                return SourceColorSpace::DisplayP3;
+            }
+            if desc_lower.contains("adobe rgb") || desc_lower.contains("adobergb") {
+                return SourceColorSpace::AdobeRgb;
+            }
+            if desc_lower.contains("srgb") || desc_lower.contains("iec61966") {
+                return SourceColorSpace::Srgb;
             }
         }
         // Has a profile but couldn't identify it
@@ -157,16 +158,15 @@ pub fn detect_color_space_from_exif(data: &[u8]) -> Option<SourceColorSpace> {
         .ok()?;
 
     // ColorSpace tag: 1 = sRGB, 2 = Adobe RGB, 0xFFFF = Uncalibrated
-    if let Some(field) = exif.get_field(exif::Tag::ColorSpace, exif::In::PRIMARY) {
-        if let exif::Value::Short(values) = &field.value {
-            if let Some(&value) = values.first() {
-                return match value {
-                    1 => Some(SourceColorSpace::Srgb),
-                    2 => Some(SourceColorSpace::AdobeRgb),
-                    _ => None,
-                };
-            }
-        }
+    if let Some(field) = exif.get_field(exif::Tag::ColorSpace, exif::In::PRIMARY)
+        && let exif::Value::Short(values) = &field.value
+        && let Some(&value) = values.first()
+    {
+        return match value {
+            1 => Some(SourceColorSpace::Srgb),
+            2 => Some(SourceColorSpace::AdobeRgb),
+            _ => None,
+        };
     }
     None
 }
