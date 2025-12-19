@@ -10,8 +10,8 @@ fn main() -> Result<()> {
     if args.len() < 3 {
         eprintln!("Usage: {} <input> <output> [quality] [options]", args[0]);
         eprintln!();
-        eprintln!("Output format is determined by file extension (.jpg, .png, .webp)");
-        eprintln!("Quality: 1-100 for JPEG/WebP (default: 75/80), 0-6 for PNG optimization (default: 2)");
+        eprintln!("Output format is determined by file extension (.jpg, .png, .webp, .avif)");
+        eprintln!("Quality: 1-100 for JPEG/WebP/AVIF (default: 75-80), 0-6 for PNG optimization (default: 2)");
         eprintln!();
         eprintln!("Options:");
         eprintln!("  --lossless      Lossless encoding (PNG, WebP)");
@@ -49,8 +49,9 @@ fn main() -> Result<()> {
         Some("png") => OutputFormat::Png,
         Some("jpg") | Some("jpeg") => OutputFormat::Jpeg,
         Some("webp") => OutputFormat::WebP,
+        Some("avif") => OutputFormat::Avif,
         _ => {
-            eprintln!("Unknown output format. Use .jpg, .png, or .webp extension.");
+            eprintln!("Unknown output format. Use .jpg, .png, .webp, or .avif extension.");
             std::process::exit(1);
         }
     };
@@ -74,6 +75,10 @@ fn main() -> Result<()> {
             .with_format(OutputFormat::WebP)
             .with_quality(quality)
             .with_lossless(lossless)
+            .with_preserve_icc(preserve_icc),
+        OutputFormat::Avif => PipelineConfig::new()
+            .with_format(OutputFormat::Avif)
+            .with_quality(quality)
             .with_preserve_icc(preserve_icc),
     };
 

@@ -4,7 +4,7 @@
 
 use crate::color::{extract_color_info, get_display_p3_icc, get_srgb_icc, ColorTransformer};
 use crate::config::{FilterType, OutputFormat, PipelineConfig};
-use crate::formats::{Encoder, JpegEncoder, PngEncoder, WebpEncoder};
+use crate::formats::{AvifEncoder, Encoder, JpegEncoder, PngEncoder, WebpEncoder};
 use crate::orientation::{apply_orientation, extract_orientation};
 use anyhow::{Context, Result};
 use fast_image_resize::{
@@ -52,16 +52,18 @@ pub fn process(input: &[u8], config: &PipelineConfig) -> Result<Vec<u8>> {
     // - preserve_icc: true → no transform, keep original ICC
     // - preserve_icc: false → normalize to P3 if source has profile, else sRGB
     // - Quantized formats (lossy PNG) always stay in sRGB
+    // - AVIF must stay in sRGB (ravif assumes sRGB, no CICP control)
     let uses_quantization =
         matches!(config.output_format, OutputFormat::Png) && !config.png.lossless;
+    let requires_srgb = uses_quantization || matches!(config.output_format, OutputFormat::Avif);
     let has_source_profile = color_info.icc_profile.is_some();
 
     // Determine color handling strategy
     let (apply_p3, preserve_original) = if config.preserve_icc {
         // Preserve original - no transform needed if already sRGB
         (false, true)
-    } else if uses_quantization {
-        // Quantized output - must stay in sRGB for accurate quantization
+    } else if requires_srgb {
+        // Format requires sRGB (quantization or AVIF)
         (false, false)
     } else if has_source_profile {
         // Has profile and not preserving - normalize to P3
@@ -160,6 +162,13 @@ pub fn process(input: &[u8], config: &PipelineConfig) -> Result<Vec<u8>> {
             dst_width,
             dst_height,
             &config.webp,
+            icc_profile.as_deref(),
+        )?,
+        OutputFormat::Avif => AvifEncoder::encode(
+            &resized,
+            dst_width,
+            dst_height,
+            &config.avif,
             icc_profile.as_deref(),
         )?,
     };

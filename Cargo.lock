@@ -677,6 +677,7 @@ dependencies = [
  "moxcms",
  "mozjpeg",
  "oxipng",
+ "ravif",
  "webp",
 ]
 
@@ -1239,6 +1240,7 @@ dependencies = [
  "av1-grain",
  "bitstream-io",
  "built",
+ "cc",
  "cfg-if",
  "interpolate_name",
  "itertools",
@@ -1246,6 +1248,7 @@ dependencies = [
  "libfuzzer-sys",
  "log",
  "maybe-rayon",
+ "nasm-rs",
  "new_debug_unreachable",
  "noop_proc_macro",
  "num-derive",

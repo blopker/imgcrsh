@@ -13,7 +13,7 @@ Tracking implementation of the [Technical Specification](SPEC.md) for the High-F
 - [x] `mozjpeg` - JPEG encoding
 - [x] `oxipng` - PNG optimization
 - [x] `webp` - WebP encoding
-- [ ] `ravif` - AVIF encoding
+- [x] `ravif` - AVIF encoding
 - [ ] `zune-jpegxl` / `libjxl` - JPEG XL encoding
 - [ ] `gifski` - GIF encoding
 
@@ -102,9 +102,10 @@ Tracking implementation of the [Technical Specification](SPEC.md) for the High-F
 - [x] ICC profile embedding via VP8X extended format
 
 ### AVIF
-- [ ] ravif/libavif integration
-- [ ] Speed/effort setting (0-10)
-- [ ] Quantizer setting (0-63)
+- [x] ravif (rav1e) integration
+- [x] Quality setting (0-100)
+- [x] Speed setting (1-10, default 4)
+- [ ] ICC profile embedding
 - [ ] CICP flags for Display P3 (12/13/0)
 
 ### JPEG XL
@@ -145,10 +146,10 @@ Tracking implementation of the [Technical Specification](SPEC.md) for the High-F
 - [x] `png.quality: u8` (default: 90) - for lossy mode
 - [x] `webp.lossless: bool` (default: false)
 - [x] `webp.quality: u8` (default: 80)
+- [x] `avif.quality: u8` (default: 80)
+- [x] `avif.speed: u8` (default: 4)
 
 ### Not Yet Implemented
-- [ ] `avif.speed: u8` (0-10)
-- [ ] `avif.quantizer: u8` (0-63)
 - [ ] `jxl.effort: u8` (1-9)
 - [ ] `jxl.distance: f32` (0-15)
 - [ ] `gif.gifski_quality: u8`
@@ -200,6 +201,7 @@ src/
 ├── main.rs             # CLI interface
 └── formats/
     ├── mod.rs          # Encoder trait & re-exports
+    ├── avif.rs         # AVIF encoding (ravif/rav1e)
     ├── jpeg.rs         # JPEG encoding (mozjpeg + ICC injection fix)
     ├── png.rs          # PNG encoding (oxipng + imagequant)
     └── webp.rs         # WebP encoding (libwebp)
@@ -214,8 +216,8 @@ scratch/                # Development utilities (not part of library)
 
 ## Next Steps (Suggested Priority)
 
-1. **AVIF Encoding** - Modern format with CICP color management
+1. **AVIF ICC/CICP** - Color management for AVIF (Display P3 support)
 2. **Chroma Alignment** - Ensure even dimensions for subsampled formats
 3. **DSSIM Tests** - Add perceptual regression tests (dev-only)
-4. **CLI Enhancements** - Add more options to main.rs (lossless flag, resize)
+4. **CLI Enhancements** - Add resize options, speed settings
 5. **JPEG XL Encoding** - Future-proof format support
