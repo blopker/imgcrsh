@@ -14,8 +14,9 @@ fn main() -> Result<()> {
         eprintln!("Quality: 1-100 for JPEG/WebP/AVIF/JXL/GIF (default: 75-80), 0-6 for PNG optimization (default: 2)");
         eprintln!();
         eprintln!("Options:");
-        eprintln!("  --width=N       Resize to width N (preserves aspect ratio if height omitted)");
-        eprintln!("  --height=N      Resize to height N (preserves aspect ratio if width omitted)");
+        eprintln!("  --width=N       Resize to width N (preserves aspect ratio)");
+        eprintln!("  --height=N      Resize to height N (preserves aspect ratio)");
+        eprintln!("                  (if both specified, fits within bounding box)");
         eprintln!("  --lossless      Lossless encoding (PNG, WebP, JXL)");
         eprintln!("  --preserve-icc  Keep original ICC profile (no color normalization)");
         std::process::exit(1);
@@ -91,7 +92,7 @@ fn main() -> Result<()> {
 
     if width.is_some() || height.is_some() {
         match (width, height) {
-            (Some(w), Some(h)) => println!("Resizing to {}x{}", w, h),
+            (Some(w), Some(h)) => println!("Fitting within {}x{}", w, h),
             (Some(w), None) => println!("Resizing to width {}", w),
             (None, Some(h)) => println!("Resizing to height {}", h),
             _ => {}

@@ -200,6 +200,7 @@ fn decode_image_with_format(input: &[u8], format: image::ImageFormat) -> Result<
 }
 
 /// Calculate output dimensions respecting aspect ratio
+/// When both width and height are specified, fits within the bounding box
 fn calculate_dimensions(
     src_width: u32,
     src_height: u32,
@@ -207,7 +208,15 @@ fn calculate_dimensions(
     target_height: Option<u32>,
 ) -> (u32, u32) {
     match (target_width, target_height) {
-        (Some(w), Some(h)) => (w, h),
+        (Some(max_w), Some(max_h)) => {
+            // Fit within bounding box, preserving aspect ratio
+            let width_ratio = max_w as f64 / src_width as f64;
+            let height_ratio = max_h as f64 / src_height as f64;
+            let ratio = width_ratio.min(height_ratio);
+            let w = (src_width as f64 * ratio).round() as u32;
+            let h = (src_height as f64 * ratio).round() as u32;
+            (w.max(1), h.max(1))
+        }
         (Some(w), None) => {
             let ratio = w as f64 / src_width as f64;
             let h = (src_height as f64 * ratio).round() as u32;
@@ -283,10 +292,20 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_calculate_dimensions_both_specified() {
+    fn test_calculate_dimensions_both_specified_fit_width() {
+        // 1000x800 into 500x500 box -> limited by width -> 500x400
         assert_eq!(
-            calculate_dimensions(1000, 800, Some(500), Some(400)),
+            calculate_dimensions(1000, 800, Some(500), Some(500)),
             (500, 400)
+        );
+    }
+
+    #[test]
+    fn test_calculate_dimensions_both_specified_fit_height() {
+        // 800x1000 into 500x500 box -> limited by height -> 400x500
+        assert_eq!(
+            calculate_dimensions(800, 1000, Some(500), Some(500)),
+            (400, 500)
         );
     }
 
