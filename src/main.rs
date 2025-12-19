@@ -14,6 +14,8 @@ fn main() -> Result<()> {
         eprintln!("Quality: 1-100 for JPEG/WebP/AVIF/JXL/GIF (default: 75-80), 0-6 for PNG optimization (default: 2)");
         eprintln!();
         eprintln!("Options:");
+        eprintln!("  --width=N       Resize to width N (preserves aspect ratio if height omitted)");
+        eprintln!("  --height=N      Resize to height N (preserves aspect ratio if width omitted)");
         eprintln!("  --lossless      Lossless encoding (PNG, WebP, JXL)");
         eprintln!("  --preserve-icc  Keep original ICC profile (no color normalization)");
         std::process::exit(1);
@@ -26,6 +28,19 @@ fn main() -> Result<()> {
     // Check for flags
     let preserve_icc = args.iter().any(|a| a == "--preserve-icc");
     let lossless = args.iter().any(|a| a == "--lossless");
+
+    // Parse --width=N and --height=N
+    let width: Option<u32> = args
+        .iter()
+        .find(|a| a.starts_with("--width="))
+        .and_then(|a| a.strip_prefix("--width="))
+        .and_then(|v| v.parse().ok());
+
+    let height: Option<u32> = args
+        .iter()
+        .find(|a| a.starts_with("--height="))
+        .and_then(|a| a.strip_prefix("--height="))
+        .and_then(|v| v.parse().ok());
 
     // Parse quality (skip flags)
     let quality: u8 = args
@@ -62,37 +77,26 @@ fn main() -> Result<()> {
     println!("Input size: {} bytes", input_size);
 
     // Configure pipeline
-    let config = match output_format {
-        OutputFormat::Jpeg => PipelineConfig::new()
-            .with_format(OutputFormat::Jpeg)
-            .with_quality(quality)
-            .with_lossless(lossless)
-            .with_preserve_icc(preserve_icc),
-        OutputFormat::Png => PipelineConfig::new()
-            .with_format(OutputFormat::Png)
-            .with_png_optimization(quality.min(6))
-            .with_lossless(lossless)
-            .with_preserve_icc(preserve_icc),
-        OutputFormat::WebP => PipelineConfig::new()
-            .with_format(OutputFormat::WebP)
-            .with_quality(quality)
-            .with_lossless(lossless)
-            .with_preserve_icc(preserve_icc),
-        OutputFormat::Avif => PipelineConfig::new()
-            .with_format(OutputFormat::Avif)
-            .with_quality(quality)
-            .with_preserve_icc(preserve_icc),
-        OutputFormat::Jxl => PipelineConfig::new()
-            .with_format(OutputFormat::Jxl)
-            .with_quality(quality)
-            .with_lossless(lossless)
-            .with_preserve_icc(preserve_icc),
-        OutputFormat::Gif => PipelineConfig::new()
-            .with_format(OutputFormat::Gif)
-            .with_quality(quality)
-            .with_preserve_icc(preserve_icc),
-    };
+    let mut config = PipelineConfig::new()
+        .with_format(output_format)
+        .with_quality(quality)
+        .with_lossless(lossless)
+        .with_preserve_icc(preserve_icc)
+        .with_dimensions(width, height);
 
+    // PNG uses optimization level instead of quality
+    if matches!(output_format, OutputFormat::Png) {
+        config = config.with_png_optimization(quality.min(6));
+    }
+
+    if width.is_some() || height.is_some() {
+        match (width, height) {
+            (Some(w), Some(h)) => println!("Resizing to {}x{}", w, h),
+            (Some(w), None) => println!("Resizing to width {}", w),
+            (None, Some(h)) => println!("Resizing to height {}", h),
+            _ => {}
+        }
+    }
     if lossless {
         println!("Using lossless encoding");
     }

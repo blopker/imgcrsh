@@ -225,5 +225,4 @@ scratch/                # Development utilities (not part of library)
 
 1. **Chroma Alignment** - Ensure even dimensions for subsampled formats
 2. **DSSIM Tests** - Add perceptual regression tests (dev-only)
-3. **CLI Enhancements** - Add resize options, speed settings
-4. **Error Handling** - catch_unwind for FFI panics, OOM guards
+3. **Error Handling** - catch_unwind for FFI panics, OOM guards
