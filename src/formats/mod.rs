@@ -3,12 +3,14 @@
 //! Each format implements the `Encoder` trait for consistent pipeline integration.
 
 pub mod avif;
+pub mod gif;
 pub mod jpeg;
 pub mod jxl;
 pub mod png;
 pub mod webp;
 
 pub use avif::{AvifConfig, AvifEncoder};
+pub use gif::{GifConfig, GifEncoderImpl};
 pub use jpeg::{ChromaSubsampling, JpegConfig, JpegEncoder};
 pub use jxl::{JxlConfig, JxlEncoder};
 pub use png::{PngConfig, PngEncoder};

@@ -32,6 +32,7 @@ webp = "0.3"           # WebP conversion and encoding
 imagequant = "4"       # RGBA quantization for lossy PNG (pngquant library)
 ravif = "0.12"         # AVIF encoding via rav1e
 jpegxl-rs = { version = "0.11", features = ["vendored"] }  # JPEG XL encoding via libjxl
+gif = "0.13"           # GIF encoding with palette support
 
 # Metadata Parsing
 kamadak-exif = "0.6"   # Lightweight, read-only EXIF parser for orientation & color space

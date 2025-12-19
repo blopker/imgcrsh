@@ -1,6 +1,6 @@
 //! Pipeline configuration types
 
-use crate::formats::{avif::AvifConfig, jpeg::JpegConfig, jxl::JxlConfig, png::PngConfig, webp::WebpConfig};
+use crate::formats::{avif::AvifConfig, gif::GifConfig, jpeg::JpegConfig, jxl::JxlConfig, png::PngConfig, webp::WebpConfig};
 
 /// Resampling filter types for spatial transformation
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -21,7 +21,7 @@ pub enum OutputFormat {
     WebP,
     Avif,
     Jxl,
-    // Future: Tiff, Gif
+    Gif,
 }
 
 /// Main pipeline configuration
@@ -57,6 +57,8 @@ pub struct PipelineConfig {
     pub avif: AvifConfig,
     /// JPEG XL-specific options
     pub jxl: JxlConfig,
+    /// GIF-specific options
+    pub gif: GifConfig,
 }
 
 impl Default for PipelineConfig {
@@ -74,6 +76,7 @@ impl Default for PipelineConfig {
             webp: WebpConfig::default(),
             avif: AvifConfig::default(),
             jxl: JxlConfig::default(),
+            gif: GifConfig::default(),
         }
     }
 }
@@ -105,6 +108,7 @@ impl PipelineConfig {
         self.webp.quality = q;
         self.avif.quality = q;
         self.jxl.quality = q;
+        self.gif.quality = q;
         self
     }
 

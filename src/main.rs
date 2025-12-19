@@ -1,5 +1,5 @@
 use anyhow::Result;
-use imgcrsh::{OutputFormat, PipelineConfig, process};
+use imgcrsh::{process, OutputFormat, PipelineConfig};
 use std::env;
 use std::fs;
 use std::path::Path;
@@ -10,11 +10,11 @@ fn main() -> Result<()> {
     if args.len() < 3 {
         eprintln!("Usage: {} <input> <output> [quality] [options]", args[0]);
         eprintln!();
-        eprintln!("Output format is determined by file extension (.jpg, .png, .webp, .avif, .jxl)");
-        eprintln!("Quality: 1-100 for JPEG/WebP/AVIF/JXL (default: 75-80), 0-6 for PNG optimization (default: 2)");
+        eprintln!("Output format is determined by file extension (.jpg, .png, .webp, .avif, .jxl, .gif)");
+        eprintln!("Quality: 1-100 for JPEG/WebP/AVIF/JXL/GIF (default: 75-80), 0-6 for PNG optimization (default: 2)");
         eprintln!();
         eprintln!("Options:");
-        eprintln!("  --lossless      Lossless encoding (PNG, WebP)");
+        eprintln!("  --lossless      Lossless encoding (PNG, WebP, JXL)");
         eprintln!("  --preserve-icc  Keep original ICC profile (no color normalization)");
         std::process::exit(1);
     }
@@ -51,8 +51,9 @@ fn main() -> Result<()> {
         Some("webp") => OutputFormat::WebP,
         Some("avif") => OutputFormat::Avif,
         Some("jxl") => OutputFormat::Jxl,
+        Some("gif") => OutputFormat::Gif,
         _ => {
-            eprintln!("Unknown output format. Use .jpg, .png, .webp, .avif, or .jxl extension.");
+            eprintln!("Unknown output format. Use .jpg, .png, .webp, .avif, .jxl, or .gif extension.");
             std::process::exit(1);
         }
     };
@@ -85,6 +86,10 @@ fn main() -> Result<()> {
             .with_format(OutputFormat::Jxl)
             .with_quality(quality)
             .with_lossless(lossless)
+            .with_preserve_icc(preserve_icc),
+        OutputFormat::Gif => PipelineConfig::new()
+            .with_format(OutputFormat::Gif)
+            .with_quality(quality)
             .with_preserve_icc(preserve_icc),
     };
 

@@ -15,7 +15,7 @@ Tracking implementation of the [Technical Specification](SPEC.md) for the High-F
 - [x] `webp` - WebP encoding
 - [x] `ravif` - AVIF encoding
 - [x] `jpegxl-rs` - JPEG XL encoding (libjxl bindings)
-- [ ] `gifski` - GIF encoding
+- [x] `gif` - GIF encoding with imagequant quantization
 
 ### Dev Dependencies
 - [x] `dssim` - Perceptual quality regression tests
@@ -123,10 +123,13 @@ Tracking implementation of the [Technical Specification](SPEC.md) for the High-F
 - [ ] Full ICC profile injection
 
 ### GIF
-- [ ] gifski integration
-- [ ] Quality setting
-- [ ] sRGB enforcement
-- [ ] Temporal/spatial dithering
+- [x] gif crate integration (with imagequant for quality quantization)
+- [x] Quality setting (0-100, controls imagequant)
+- [x] sRGB enforcement
+- [x] Dithering for smooth gradients (imagequant built-in)
+- [x] Binary transparency support (alpha threshold)
+- Note: GIF is 256-color palette format, best for graphics not photos
+- Note: Animated GIFs not supported (first frame only)
 
 ---
 
@@ -153,9 +156,8 @@ Tracking implementation of the [Technical Specification](SPEC.md) for the High-F
 - [x] `jxl.lossless: bool` (default: false)
 - [x] `jxl.quality: u8` (default: 80)
 - [x] `jxl.effort: u8` (1-10, default: 7)
-
-### Not Yet Implemented
-- [ ] `gif.gifski_quality: u8`
+- [x] `gif.quality: u8` (default: 80)
+- [x] `gif.alpha_threshold: u8` (default: 128)
 
 ---
 
@@ -205,6 +207,7 @@ src/
 └── formats/
     ├── mod.rs          # Encoder trait & re-exports
     ├── avif.rs         # AVIF encoding (ravif/rav1e)
+    ├── gif.rs          # GIF encoding (gif + imagequant)
     ├── jpeg.rs         # JPEG encoding (mozjpeg + ICC injection fix)
     ├── jxl.rs          # JPEG XL encoding (jpegxl-rs/libjxl)
     ├── png.rs          # PNG encoding (oxipng + imagequant)
@@ -220,8 +223,7 @@ scratch/                # Development utilities (not part of library)
 
 ## Next Steps (Suggested Priority)
 
-1. **ICC Profile Embedding** - AVIF and JXL need ICC profile support for wide gamut
-2. **AVIF CICP Flags** - Display P3 signaling via color_primaries/transfer_characteristics
-3. **Chroma Alignment** - Ensure even dimensions for subsampled formats
-4. **DSSIM Tests** - Add perceptual regression tests (dev-only)
-5. **CLI Enhancements** - Add resize options, speed settings
+1. **Chroma Alignment** - Ensure even dimensions for subsampled formats
+2. **DSSIM Tests** - Add perceptual regression tests (dev-only)
+3. **CLI Enhancements** - Add resize options, speed settings
+4. **Error Handling** - catch_unwind for FFI panics, OOM guards
