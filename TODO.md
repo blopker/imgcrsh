@@ -14,7 +14,7 @@ Tracking implementation of the [Technical Specification](SPEC.md) for the High-F
 - [x] `oxipng` - PNG optimization
 - [x] `webp` - WebP encoding
 - [x] `ravif` - AVIF encoding
-- [ ] `zune-jpegxl` / `libjxl` - JPEG XL encoding
+- [x] `jpegxl-rs` - JPEG XL encoding (libjxl bindings)
 - [ ] `gifski` - GIF encoding
 
 ### Dev Dependencies
@@ -109,12 +109,13 @@ Tracking implementation of the [Technical Specification](SPEC.md) for the High-F
 - [ ] CICP flags for Display P3 (12/13/0)
 
 ### JPEG XL
-- [ ] zune-jpegxl/libjxl integration
-- [ ] Effort setting (1-9)
-- [ ] Distance setting (Butteraugli, 0-15)
-- [ ] VarDCT for lossy
-- [ ] Modular for lossless
+- [x] jpegxl-rs (libjxl) integration
+- [x] Effort setting (1-10, maps to EncoderSpeed)
+- [x] Quality to distance conversion (0-100 → 0-15)
+- [x] Lossy mode (quality-based)
+- [x] Lossless mode
 - [ ] Lossless JPEG transcoding
+- [ ] ICC profile embedding
 
 ### TIFF
 - [ ] image-tiff integration
@@ -149,9 +150,11 @@ Tracking implementation of the [Technical Specification](SPEC.md) for the High-F
 - [x] `avif.quality: u8` (default: 80)
 - [x] `avif.speed: u8` (default: 4)
 
+- [x] `jxl.lossless: bool` (default: false)
+- [x] `jxl.quality: u8` (default: 80)
+- [x] `jxl.effort: u8` (1-10, default: 7)
+
 ### Not Yet Implemented
-- [ ] `jxl.effort: u8` (1-9)
-- [ ] `jxl.distance: f32` (0-15)
 - [ ] `gif.gifski_quality: u8`
 
 ---
@@ -203,6 +206,7 @@ src/
     ├── mod.rs          # Encoder trait & re-exports
     ├── avif.rs         # AVIF encoding (ravif/rav1e)
     ├── jpeg.rs         # JPEG encoding (mozjpeg + ICC injection fix)
+    ├── jxl.rs          # JPEG XL encoding (jpegxl-rs/libjxl)
     ├── png.rs          # PNG encoding (oxipng + imagequant)
     └── webp.rs         # WebP encoding (libwebp)
 
@@ -216,8 +220,8 @@ scratch/                # Development utilities (not part of library)
 
 ## Next Steps (Suggested Priority)
 
-1. **AVIF ICC/CICP** - Color management for AVIF (Display P3 support)
-2. **Chroma Alignment** - Ensure even dimensions for subsampled formats
-3. **DSSIM Tests** - Add perceptual regression tests (dev-only)
-4. **CLI Enhancements** - Add resize options, speed settings
-5. **JPEG XL Encoding** - Future-proof format support
+1. **ICC Profile Embedding** - AVIF and JXL need ICC profile support for wide gamut
+2. **AVIF CICP Flags** - Display P3 signaling via color_primaries/transfer_characteristics
+3. **Chroma Alignment** - Ensure even dimensions for subsampled formats
+4. **DSSIM Tests** - Add perceptual regression tests (dev-only)
+5. **CLI Enhancements** - Add resize options, speed settings

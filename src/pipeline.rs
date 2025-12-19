@@ -4,7 +4,7 @@
 
 use crate::color::{extract_color_info, get_display_p3_icc, get_srgb_icc, ColorTransformer};
 use crate::config::{FilterType, OutputFormat, PipelineConfig};
-use crate::formats::{AvifEncoder, Encoder, JpegEncoder, PngEncoder, WebpEncoder};
+use crate::formats::{AvifEncoder, Encoder, JpegEncoder, JxlEncoder, PngEncoder, WebpEncoder};
 use crate::orientation::{apply_orientation, extract_orientation};
 use anyhow::{Context, Result};
 use fast_image_resize::{
@@ -55,7 +55,8 @@ pub fn process(input: &[u8], config: &PipelineConfig) -> Result<Vec<u8>> {
     // - AVIF must stay in sRGB (ravif assumes sRGB, no CICP control)
     let uses_quantization =
         matches!(config.output_format, OutputFormat::Png) && !config.png.lossless;
-    let requires_srgb = uses_quantization || matches!(config.output_format, OutputFormat::Avif);
+    let requires_srgb = uses_quantization
+        || matches!(config.output_format, OutputFormat::Avif | OutputFormat::Jxl);
     let has_source_profile = color_info.icc_profile.is_some();
 
     // Determine color handling strategy
@@ -169,6 +170,13 @@ pub fn process(input: &[u8], config: &PipelineConfig) -> Result<Vec<u8>> {
             dst_width,
             dst_height,
             &config.avif,
+            icc_profile.as_deref(),
+        )?,
+        OutputFormat::Jxl => JxlEncoder::encode(
+            &resized,
+            dst_width,
+            dst_height,
+            &config.jxl,
             icc_profile.as_deref(),
         )?,
     };

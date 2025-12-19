@@ -31,6 +31,7 @@ oxipng = "10.0"         # Multi-threaded PNG optimization
 webp = "0.3"           # WebP conversion and encoding
 imagequant = "4"       # RGBA quantization for lossy PNG (pngquant library)
 ravif = "0.12"         # AVIF encoding via rav1e
+jpegxl-rs = { version = "0.11", features = ["vendored"] }  # JPEG XL encoding via libjxl
 
 # Metadata Parsing
 kamadak-exif = "0.6"   # Lightweight, read-only EXIF parser for orientation & color space
