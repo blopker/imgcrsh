@@ -105,8 +105,6 @@ Tracking implementation of the [Technical Specification](SPEC.md) for the High-F
 - [x] ravif (rav1e) integration
 - [x] Quality setting (0-100)
 - [x] Speed setting (1-10, default 4)
-- [ ] ICC profile embedding
-- [ ] CICP flags for Display P3 (12/13/0)
 
 ### JPEG XL
 - [x] jpegxl-rs (libjxl) integration
@@ -114,13 +112,6 @@ Tracking implementation of the [Technical Specification](SPEC.md) for the High-F
 - [x] Quality to distance conversion (0-100 → 0-15)
 - [x] Lossy mode (quality-based)
 - [x] Lossless mode
-- [ ] Lossless JPEG transcoding
-- [ ] ICC profile embedding
-
-### TIFF
-- [ ] image-tiff integration
-- [ ] 16-bit depth preservation
-- [ ] Full ICC profile injection
 
 ### GIF
 - [x] gif crate integration (with imagequant for quality quantization)
@@ -189,7 +180,6 @@ Tracking implementation of the [Technical Specification](SPEC.md) for the High-F
 
 ### Verification (Dev/Test Only)
 - [ ] DSSIM regression tests (dev dependency)
-- [ ] Gamut validation tests via moxcms
 - [ ] Performance benchmarks (target: >1.5 GB/s)
 
 ---
