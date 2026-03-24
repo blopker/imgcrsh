@@ -7,11 +7,11 @@ default-run = "imgcrsh"
 [dependencies]
 # The Core: High-performance color management (SIMD accelerated)
 # Replaces lcms2 for web-standard transforms.
-moxcms = "0.7"
+moxcms = "0.8"
 
 # The Muscle: Best-in-class image resizing using SIMD (AVX2/NEON)
 # Supports Lanczos3 and linear-light resampling.
-fast_image_resize = { version = "5.4", features = ["rayon"] }
+fast_image_resize = { version = "6.0", features = ["rayon"] }
 
 # The Swiss Army Knife: Format decoding and general pixel handling
 # We disable default features to keep the binary lean and avoid bloat.
@@ -30,9 +30,9 @@ mozjpeg = "0.10"        # The gold standard for web JPEG compression
 oxipng = "10.0"         # Multi-threaded PNG optimization
 webp = "0.3"           # WebP conversion and encoding
 imagequant = "4"       # RGBA quantization for lossy PNG (pngquant library)
-ravif = "0.12"         # AVIF encoding via rav1e
-jpegxl-rs = { version = "0.11", features = ["vendored"] }  # JPEG XL encoding via libjxl
-gif = "0.13"           # GIF encoding with palette support
+ravif = "0.13"         # AVIF encoding via rav1e
+jpegxl-rs = { version = "0.14", features = ["vendored"] }  # JPEG XL encoding via libjxl
+gif = "0.14"           # GIF encoding with palette support
 
 # Metadata Parsing
 kamadak-exif = "0.6"   # Lightweight, read-only EXIF parser for orientation & color space
