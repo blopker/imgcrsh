@@ -11,46 +11,34 @@ moxcms = "0.8"
 
 # The Muscle: Best-in-class image resizing using SIMD (AVX2/NEON)
 # Supports Lanczos3 and linear-light resampling.
-fast_image_resize = { version = "6.0", features = ["rayon"] }
+fast_image_resize = "6.0"
 
 # The Swiss Army Knife: Format decoding and general pixel handling
 # We disable default features to keep the binary lean and avoid bloat.
 image = { version = "0.25", default-features = false, features = [
-    "jpeg",
-    "png",
-    "webp",
-    "tiff",
-    "gif",
-    "avif"
+  "jpeg",
+  "png",
+  "webp",
+  "tiff",
+  "gif",
+  "avif",
 ] }
 
 # The Optimizers: Industry-standard encoding libraries
 # We use these directly for better control over quantization and metadata injection.
-mozjpeg = "0.10"        # The gold standard for web JPEG compression
-oxipng = "10.0"         # Multi-threaded PNG optimization
-webp = "0.3"           # WebP conversion and encoding
-imagequant = "4"       # RGBA quantization for lossy PNG (pngquant library)
-ravif = "0.13"         # AVIF encoding via rav1e
-jpegxl-rs = { version = "0.14", features = ["vendored"] }  # JPEG XL encoding via libjxl
-gif = "0.14"           # GIF encoding with palette support
+mozjpeg = "0.10" # The gold standard for web JPEG compression
+oxipng = "10.0" # Multi-threaded PNG optimization
+webp = "0.3" # WebP conversion and encoding
+imagequant = "4" # RGBA quantization for lossy PNG (pngquant library)
+ravif = "0.13" # AVIF encoding via rav1e
+jpegxl-rs = { version = "0.14", features = ["vendored"] } # JPEG XL encoding via libjxl
+gif = "0.14" # GIF encoding with palette support
 
 # Metadata Parsing
-kamadak-exif = "0.6"   # Lightweight, read-only EXIF parser for orientation & color space
+kamadak-exif = "0.6" # Lightweight, read-only EXIF parser for orientation & color space
 
 # Infrastructure
-anyhow = "1.0"         # Ergonomic error handling for the pipeline logic
+anyhow = "1.0" # Ergonomic error handling for the pipeline logic
 
 [dev-dependencies]
-dssim = "3.3"          # Perceptual image quality testing
-
-[[bin]]
-name = "compare"
-path = "scratch/compare.rs"
-
-[[bin]]
-name = "compare_icc"
-path = "scratch/compare_icc.rs"
-
-[[bin]]
-name = "compare_app2"
-path = "scratch/compare_app2.rs"
+dssim = "3.3" # Perceptual image quality testing
