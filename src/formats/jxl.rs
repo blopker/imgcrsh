@@ -176,9 +176,7 @@ mod tests {
     #[test]
     fn test_jxl_lossless() {
         // Create a small gradient image (4x4)
-        let rgba: Vec<u8> = (0..16)
-            .flat_map(|i| [(i * 16) as u8, 0, 0, 255])
-            .collect();
+        let rgba: Vec<u8> = (0..16).flat_map(|i| [(i * 16) as u8, 0, 0, 255]).collect();
 
         let config = JxlConfig::new().with_lossless(true).with_effort(1);
         let output = JxlEncoder::encode(&rgba, 4, 4, &config, None).unwrap();

@@ -139,15 +139,20 @@ impl Encoder for GifEncoderImpl {
         let h = height.min(65535) as u16;
 
         // Quantize with transparency
-        let (indices, palette, transparent) =
-            Self::quantize_with_transparency(rgba, width, height, config.quality, config.alpha_threshold)?;
+        let (indices, palette, transparent) = Self::quantize_with_transparency(
+            rgba,
+            width,
+            height,
+            config.quality,
+            config.alpha_threshold,
+        )?;
 
         // Create output buffer
         let mut output = Cursor::new(Vec::new());
 
         // Create GIF encoder with global palette
-        let mut encoder = GifEncoder::new(&mut output, w, h, &palette)
-            .context("Failed to create GIF encoder")?;
+        let mut encoder =
+            GifEncoder::new(&mut output, w, h, &palette).context("Failed to create GIF encoder")?;
 
         // Set to not repeat (single image, not animation)
         encoder

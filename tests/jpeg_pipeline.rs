@@ -1,7 +1,7 @@
 //! Integration tests for the JPEG pipeline
 
+use image::{ImageEncoder, RgbImage};
 use imgcrsh::{PipelineConfig, process};
-use image::{RgbImage, ImageEncoder};
 use std::io::Cursor;
 
 /// Create a test JPEG image in memory
@@ -20,12 +20,9 @@ fn create_test_jpeg(width: u32, height: u32, quality: u8) -> Vec<u8> {
     // Encode to JPEG
     let mut buffer = Cursor::new(Vec::new());
     let encoder = image::codecs::jpeg::JpegEncoder::new_with_quality(&mut buffer, quality);
-    encoder.write_image(
-        img.as_raw(),
-        width,
-        height,
-        image::ExtendedColorType::Rgb8,
-    ).unwrap();
+    encoder
+        .write_image(img.as_raw(), width, height, image::ExtendedColorType::Rgb8)
+        .unwrap();
 
     buffer.into_inner()
 }
@@ -35,15 +32,18 @@ fn test_basic_jpeg_passthrough() {
     let input = create_test_jpeg(800, 600, 90);
     let input_size = input.len();
 
-    let config = PipelineConfig::new()
-        .with_quality(75);
+    let config = PipelineConfig::new().with_quality(75);
 
     let output = process(&input, &config).expect("Pipeline should succeed");
 
     // Output should be valid JPEG
     assert!(!output.is_empty());
     // mozjpeg should compress better than the simple encoder
-    println!("Input: {} bytes, Output: {} bytes", input_size, output.len());
+    println!(
+        "Input: {} bytes, Output: {} bytes",
+        input_size,
+        output.len()
+    );
 }
 
 #[test]
@@ -74,7 +74,11 @@ fn test_jpeg_quality_levels() {
     let high_config = PipelineConfig::new().with_quality(95);
     let high_output = process(&input, &high_config).unwrap();
 
-    println!("Q30: {} bytes, Q95: {} bytes", low_output.len(), high_output.len());
+    println!(
+        "Q30: {} bytes, Q95: {} bytes",
+        low_output.len(),
+        high_output.len()
+    );
     assert!(low_output.len() < high_output.len());
 }
 
@@ -98,8 +102,7 @@ fn test_progressive_jpeg() {
 fn test_lossless_mode() {
     let input = create_test_jpeg(200, 150, 100);
 
-    let config = PipelineConfig::new()
-        .with_lossless(true);
+    let config = PipelineConfig::new().with_lossless(true);
 
     let output = process(&input, &config).expect("Pipeline should succeed");
 

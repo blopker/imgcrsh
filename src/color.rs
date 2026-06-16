@@ -41,9 +41,7 @@ impl Default for ColorSpaceInfo {
 fn profile_text_to_string(text: &ProfileText) -> Option<String> {
     match text {
         ProfileText::PlainString(s) => Some(s.clone()),
-        ProfileText::Localizable(locales) => {
-            locales.first().map(|l| l.value.clone())
-        }
+        ProfileText::Localizable(locales) => locales.first().map(|l| l.value.clone()),
         ProfileText::Description(desc) => Some(desc.ascii_string.clone()),
     }
 }
@@ -95,10 +93,7 @@ pub fn extract_icc_from_jpeg(data: &[u8]) -> Option<Vec<u8>> {
         pos += length - 2;
 
         // APP2 marker (0xE2) with ICC_PROFILE header
-        if marker == 0xE2
-            && segment_data.len() > 14
-            && &segment_data[0..12] == b"ICC_PROFILE\0"
-        {
+        if marker == 0xE2 && segment_data.len() > 14 && &segment_data[0..12] == b"ICC_PROFILE\0" {
             let chunk_num = segment_data[12];
             let total_chunks = segment_data[13];
             let profile_data = segment_data[14..].to_vec();
@@ -211,8 +206,7 @@ impl ColorTransformer {
     pub fn new(color_info: &ColorSpaceInfo, normalize_to_p3: bool) -> Result<Self> {
         // Build source profile
         let source = if let Some(icc) = &color_info.icc_profile {
-            ColorProfile::new_from_slice(icc)
-                .context("Failed to parse source ICC profile")?
+            ColorProfile::new_from_slice(icc).context("Failed to parse source ICC profile")?
         } else {
             match color_info.space {
                 SourceColorSpace::Srgb => ColorProfile::new_srgb(),
@@ -249,15 +243,22 @@ impl ColorTransformer {
 
     /// Transform RGB8 pixels in place
     pub fn transform_rgb8(&self, pixels: &mut [u8], width: usize) -> Result<()> {
-        let transform = self.source
-            .create_transform_8bit(Layout::Rgb, &self.dest, Layout::Rgb, TransformOptions::default())
+        let transform = self
+            .source
+            .create_transform_8bit(
+                Layout::Rgb,
+                &self.dest,
+                Layout::Rgb,
+                TransformOptions::default(),
+            )
             .context("Failed to create color transform")?;
 
         // Process scanlines
         let row_bytes = width * 3;
         for row in pixels.chunks_exact_mut(row_bytes) {
             let mut dst = vec![0u8; row_bytes];
-            transform.transform(row, &mut dst)
+            transform
+                .transform(row, &mut dst)
                 .context("Color transform failed")?;
             row.copy_from_slice(&dst);
         }
@@ -267,15 +268,22 @@ impl ColorTransformer {
 
     /// Transform RGBA8 pixels (ignores alpha)
     pub fn transform_rgba8(&self, pixels: &mut [u8], width: usize) -> Result<()> {
-        let transform = self.source
-            .create_transform_8bit(Layout::Rgba, &self.dest, Layout::Rgba, TransformOptions::default())
+        let transform = self
+            .source
+            .create_transform_8bit(
+                Layout::Rgba,
+                &self.dest,
+                Layout::Rgba,
+                TransformOptions::default(),
+            )
             .context("Failed to create color transform")?;
 
         // Process scanlines
         let row_bytes = width * 4;
         for row in pixels.chunks_exact_mut(row_bytes) {
             let mut dst = vec![0u8; row_bytes];
-            transform.transform(row, &mut dst)
+            transform
+                .transform(row, &mut dst)
                 .context("Color transform failed")?;
             row.copy_from_slice(&dst);
         }
@@ -285,7 +293,8 @@ impl ColorTransformer {
 
     /// Get the ICC profile bytes for the destination color space
     pub fn dest_icc_profile(&self) -> Result<Vec<u8>> {
-        self.dest.encode()
+        self.dest
+            .encode()
             .context("Failed to encode destination ICC profile")
     }
 
@@ -297,16 +306,12 @@ impl ColorTransformer {
 
 /// Display P3 ICC profile bytes
 pub fn get_display_p3_icc() -> Vec<u8> {
-    ColorProfile::new_display_p3()
-        .encode()
-        .unwrap_or_default()
+    ColorProfile::new_display_p3().encode().unwrap_or_default()
 }
 
 /// Standard sRGB ICC profile
 pub fn get_srgb_icc() -> Vec<u8> {
-    ColorProfile::new_srgb()
-        .encode()
-        .unwrap_or_default()
+    ColorProfile::new_srgb().encode().unwrap_or_default()
 }
 
 #[cfg(test)]

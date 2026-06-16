@@ -1,5 +1,5 @@
 use anyhow::Result;
-use imgcrsh::{process, OutputFormat, PipelineConfig};
+use imgcrsh::{OutputFormat, PipelineConfig, process};
 use std::env;
 use std::fs;
 use std::path::Path;
@@ -10,8 +10,12 @@ fn main() -> Result<()> {
     if args.len() < 3 {
         eprintln!("Usage: {} <input> <output> [quality] [options]", args[0]);
         eprintln!();
-        eprintln!("Output format is determined by file extension (.jpg, .png, .webp, .avif, .jxl, .gif)");
-        eprintln!("Quality: 1-100 for JPEG/WebP/AVIF/JXL/GIF (default: 75-80), 0-6 for PNG optimization (default: 2)");
+        eprintln!(
+            "Output format is determined by file extension (.jpg, .png, .webp, .avif, .jxl, .gif)"
+        );
+        eprintln!(
+            "Quality: 1-100 for JPEG/WebP/AVIF/JXL/GIF (default: 75-80), 0-6 for PNG optimization (default: 2)"
+        );
         eprintln!();
         eprintln!("Options:");
         eprintln!("  --width=N       Resize to width N (preserves aspect ratio)");
@@ -69,7 +73,9 @@ fn main() -> Result<()> {
         Some("jxl") => OutputFormat::Jxl,
         Some("gif") => OutputFormat::Gif,
         _ => {
-            eprintln!("Unknown output format. Use .jpg, .png, .webp, .avif, .jxl, or .gif extension.");
+            eprintln!(
+                "Unknown output format. Use .jpg, .png, .webp, .avif, .jxl, or .gif extension."
+            );
             std::process::exit(1);
         }
     };

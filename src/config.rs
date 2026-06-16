@@ -1,6 +1,9 @@
 //! Pipeline configuration types
 
-use crate::formats::{avif::AvifConfig, gif::GifConfig, jpeg::JpegConfig, jxl::JxlConfig, png::PngConfig, webp::WebpConfig};
+use crate::formats::{
+    avif::AvifConfig, gif::GifConfig, jpeg::JpegConfig, jxl::JxlConfig, png::PngConfig,
+    webp::WebpConfig,
+};
 
 /// Resampling filter types for spatial transformation
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]

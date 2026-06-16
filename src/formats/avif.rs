@@ -67,6 +67,8 @@ impl Encoder for AvifEncoder {
             .with_quality(config.quality as f32)
             .with_speed(config.speed);
 
+        // Note: ravif doesn't support with_icc_profile; ICC is ignored for AVIF
+
         // Encode
         let result = encoder
             .encode_rgba(img)

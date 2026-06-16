@@ -7,7 +7,7 @@
 //! - ICC profile embedding via VP8X extended format
 
 use super::Encoder;
-use anyhow::{ensure, Result};
+use anyhow::{Result, ensure};
 
 /// WebP encoding configuration
 #[derive(Debug, Clone)]
@@ -196,9 +196,7 @@ mod tests {
     #[test]
     fn test_webp_encode_lossless() {
         // Create a small gradient image (4x4)
-        let rgba: Vec<u8> = (0..16)
-            .flat_map(|i| [(i * 16) as u8, 0, 0, 255])
-            .collect();
+        let rgba: Vec<u8> = (0..16).flat_map(|i| [(i * 16) as u8, 0, 0, 255]).collect();
 
         let config = WebpConfig::new().with_lossless(true);
         let output = WebpEncoder::encode(&rgba, 4, 4, &config, None).unwrap();
@@ -212,9 +210,7 @@ mod tests {
     #[test]
     fn test_webp_with_alpha() {
         // Create image with varying alpha
-        let rgba: Vec<u8> = (0..16)
-            .flat_map(|i| [255, 0, 0, (i * 16) as u8])
-            .collect();
+        let rgba: Vec<u8> = (0..16).flat_map(|i| [255, 0, 0, (i * 16) as u8]).collect();
 
         let config = WebpConfig::default();
         let output = WebpEncoder::encode(&rgba, 4, 4, &config, None).unwrap();

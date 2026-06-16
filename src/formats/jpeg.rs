@@ -96,7 +96,11 @@ impl Encoder for JpegEncoder {
             .collect();
 
         // Determine effective settings
-        let quality = if config.lossless { 100.0 } else { config.quality as f32 };
+        let quality = if config.lossless {
+            100.0
+        } else {
+            config.quality as f32
+        };
 
         // Force 4:4:4 for lossless mode per spec
         let subsampling = if config.lossless {

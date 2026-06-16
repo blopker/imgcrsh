@@ -2,14 +2,16 @@
 //!
 //! Implements the full pipeline: decode → orientation → color transform → resize → encode
 
-use crate::color::{extract_color_info, get_display_p3_icc, get_srgb_icc, ColorTransformer};
+use crate::color::{ColorTransformer, extract_color_info, get_display_p3_icc, get_srgb_icc};
 use crate::config::{FilterType, OutputFormat, PipelineConfig};
-use crate::formats::{AvifEncoder, Encoder, GifEncoderImpl, JpegEncoder, JxlEncoder, PngEncoder, WebpEncoder};
+use crate::formats::{
+    AvifEncoder, Encoder, GifEncoderImpl, JpegEncoder, JxlEncoder, PngEncoder, WebpEncoder,
+};
 use crate::orientation::{apply_orientation, extract_orientation};
 use anyhow::{Context, Result};
 use fast_image_resize::{
-    create_srgb_mapper, images::Image, FilterType as FirFilterType, ResizeAlg, ResizeOptions,
-    Resizer,
+    FilterType as FirFilterType, ResizeAlg, ResizeOptions, Resizer, create_srgb_mapper,
+    images::Image,
 };
 use image::{DynamicImage, GenericImageView};
 
@@ -56,7 +58,10 @@ pub fn process(input: &[u8], config: &PipelineConfig) -> Result<Vec<u8>> {
     let uses_quantization =
         matches!(config.output_format, OutputFormat::Png) && !config.png.lossless;
     let requires_srgb = uses_quantization
-        || matches!(config.output_format, OutputFormat::Avif | OutputFormat::Jxl | OutputFormat::Gif);
+        || matches!(
+            config.output_format,
+            OutputFormat::Avif | OutputFormat::Jxl | OutputFormat::Gif
+        );
     let has_source_profile = color_info.icc_profile.is_some();
 
     // Determine color handling strategy
